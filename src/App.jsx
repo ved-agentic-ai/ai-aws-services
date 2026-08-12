@@ -16,17 +16,61 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('DASHBOARD'); // DASHBOARD | UPLOAD | EXPLORER | AWS_GUIDE | CLOUDFORMATION
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [liveMode, setLiveMode] = useState(false);
+  const [liveMode, setLiveModeState] = useState(() => {
+    try {
+      const savedMode = localStorage.getItem('cloudquest_live_mode');
+      if (savedMode !== null) return savedMode === 'true';
+    } catch (e) {}
+    return true;
+  });
+
   const [toastMessage, setToastMessage] = useState(null);
 
-  const [awsConfig, setAwsConfig] = useState({
-    s3Bucket: 'cloudquest-ml-bucket-0514',
-    region: 'us-east-1',
-    lambdaName: 'CloudQuestPayComprehendFunction',
-    apiGatewayUrl: '',
-    lambdaFunctionUrl: '',
-    iamRoleArn: 'arn:aws:iam::123456789012:role/CloudQuestLambdaRole'
+  const [awsConfig, setAwsConfigState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cloudquest_aws_config');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      s3Bucket: 'payment-ai-stack-paymentdocumentbucket-yjxtkpxjyr63',
+      region: 'us-east-1',
+      lambdaName: 'PaymentDocProcessorFunction-dev',
+      apiGatewayUrl: 'https://v0hkwd2dj4.execute-api.us-east-1.amazonaws.com/analyze-document',
+      lambdaFunctionUrl: '',
+      iamRoleArn: 'arn:aws:iam::639154179334:role/PaymentDocProcessorRole'
+    };
   });
+
+  const setAwsConfig = (newConfig) => {
+    setAwsConfigState(newConfig);
+    try {
+      localStorage.setItem('cloudquest_aws_config', JSON.stringify(newConfig));
+    } catch (e) {}
+  };
+
+  const setLiveMode = (mode) => {
+    setLiveModeState(mode);
+    try {
+      localStorage.setItem('cloudquest_live_mode', String(mode));
+    } catch (e) {}
+  };
+
+  const handleResetAwsConfig = () => {
+    try {
+      localStorage.removeItem('cloudquest_aws_config');
+      localStorage.removeItem('cloudquest_live_mode');
+    } catch (e) {}
+    setAwsConfigState({
+      s3Bucket: '',
+      region: 'us-east-1',
+      lambdaName: '',
+      apiGatewayUrl: '',
+      lambdaFunctionUrl: '',
+      accessKeyId: '',
+      secretAccessKey: ''
+    });
+    setLiveModeState(false);
+  };
 
   const handleDocumentProcessed = (newDoc) => {
     setDocuments(prev => [newDoc, ...prev]);
@@ -299,6 +343,7 @@ def lambda_handler(event, context):
           onClose={() => setIsSettingsOpen(false)}
           liveMode={liveMode}
           setLiveMode={setLiveMode}
+          onResetConfig={handleResetAwsConfig}
         />
       )}
 

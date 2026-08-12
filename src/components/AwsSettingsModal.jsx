@@ -1,11 +1,31 @@
 import React, { useState, useRef } from 'react';
 import { X, Settings, Database, Zap, Shield, Globe, Save, CheckCircle2, Info, FileUp, Sparkles } from 'lucide-react';
 
-export default function AwsSettingsModal({ awsConfig, setAwsConfig, onClose, liveMode, setLiveMode }) {
+export default function AwsSettingsModal({ awsConfig, setAwsConfig, onClose, liveMode, setLiveMode, onResetConfig }) {
   const [formData, setFormData] = useState({ ...awsConfig });
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [csvSuccessMsg, setCsvSuccessMsg] = useState(null);
   const csvInputRef = useRef(null);
+
+  const handleReset = () => {
+    if (window.confirm("Are you sure you want to clear saved AWS credentials and parameters?")) {
+      if (onResetConfig) onResetConfig();
+      setFormData({
+        s3Bucket: '',
+        region: 'us-east-1',
+        lambdaName: '',
+        apiGatewayUrl: '',
+        lambdaFunctionUrl: '',
+        accessKeyId: '',
+        secretAccessKey: ''
+      });
+      setSavedSuccess(true);
+      setTimeout(() => {
+        setSavedSuccess(false);
+        onClose();
+      }, 1000);
+    }
+  };
 
   const handleCsvUpload = (e) => {
     const file = e.target.files?.[0];
@@ -245,28 +265,38 @@ export default function AwsSettingsModal({ awsConfig, setAwsConfig, onClose, liv
           </div>
 
           {/* Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-between pt-3 border-t border-slate-800">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+              onClick={handleReset}
+              className="px-3.5 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-semibold transition-all text-xs"
             >
-              Cancel
+              🔄 Reset / Clear AWS Parameters
             </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-all flex items-center gap-2 shadow-lg shadow-amber-500/20"
-            >
-              {savedSuccess ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4" /> Saved!
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" /> Save Configuration
-                </>
-              )}
-            </button>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-all flex items-center gap-2 shadow-lg shadow-amber-500/20 text-xs"
+              >
+                {savedSuccess ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4" /> Saved!
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" /> Save Configuration
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
         </form>

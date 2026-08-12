@@ -447,6 +447,8 @@ export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}
     }
   }
 
+  const fileNameLower = (file.name || '').toLowerCase();
+
   const isEventPayment = fileNameLower.includes('event') || fileNameLower.includes('payment') || fileNameLower.includes('invotech');
   const isEmploymentForm = fileNameLower.includes('employment') || fileNameLower.includes('form') || fileNameLower.includes('application') || fileNameLower.includes('job') || fileNameLower.includes('applicant');
 
