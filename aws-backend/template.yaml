@@ -63,9 +63,17 @@ Resources:
                   - !Sub 'arn:aws:s3:::payment-docs-ai-${EnvironmentName}-${AWS::AccountId}'
                   - !Sub 'arn:aws:s3:::payment-docs-ai-${EnvironmentName}-${AWS::AccountId}/*'
 
+  # 2b. Explicit CloudWatch Log Group for Lambda (ensures log group is deleted when stack is torn down)
+  PaymentDocProcessorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/PaymentDocProcessorFunction-${EnvironmentName}'
+      RetentionInDays: 7
+
   # 3. AWS Lambda Function
   PaymentProcessorFunction:
     Type: AWS::Lambda::Function
+    DependsOn: PaymentDocProcessorLogGroup
     Properties:
       FunctionName: !Sub 'PaymentDocProcessorFunction-${EnvironmentName}'
       Runtime: python3.12

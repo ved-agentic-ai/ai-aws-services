@@ -367,7 +367,18 @@ Outputs:
           }
         }
 
-        // 2. Send DeleteStackCommand to CloudFormation
+        // 2. Delete CloudWatch Log Group directly if it exists
+        try {
+          const { CloudWatchLogsClient, DeleteLogGroupCommand } = await import('@aws-sdk/client-cloudwatch-logs');
+          const logsClient = new CloudWatchLogsClient({ region, credentials });
+          const logGroupName = `/aws/lambda/${awsConfig.lambdaName || 'PaymentDocProcessorFunction-dev'}`;
+          await logsClient.send(new DeleteLogGroupCommand({ logGroupName }));
+          console.log(`Successfully deleted CloudWatch Log Group: ${logGroupName}`);
+        } catch (logsErr) {
+          console.info("CloudWatch Log Group notice:", logsErr.message);
+        }
+
+        // 3. Send DeleteStackCommand to CloudFormation
         const cfClient = new CloudFormationClient({ region, credentials });
         await cfClient.send(new DeleteStackCommand({ StackName: 'payment-ai-stack' }));
 
