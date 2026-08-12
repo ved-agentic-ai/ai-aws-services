@@ -78,221 +78,179 @@ Resources:
           S3_BUCKET_NAME: !Ref PaymentDocumentBucket
       Code:
         ZipFile: |
-          import json
-          import boto3
-          import os
-          import logging
-          import base64
-          import re
+          import json, boto3, os, logging, base64, re, traceback
 
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
 
-          s3_client = boto3.client('s3')
-          textract_client = boto3.client('textract')
-          comprehend_client = boto3.client('comprehend')
-
           def lambda_handler(event, context):
               logger.info("Received event: %s", json.dumps(event))
-              
-              # Handle CORS OPTIONS preflight
-              http_method = event.get('requestContext', {}).get('http', {}).get('method', '')
-              if http_method == 'OPTIONS':
-                  return {
-                      'statusCode': 200,
-                      'headers': {
-                          'Access-Control-Allow-Origin': '*',
-                          'Access-Control-Allow-Headers': '*',
-                          'Access-Control-Allow-Methods': 'OPTIONS,POST'
-                      },
-                      'body': ''
+              headers = {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Headers': '*',
+                  'Access-Control-Allow-Methods': 'OPTIONS,POST'
+              }
+              try:
+                  http_method = event.get('requestContext', {}).get('http', {}).get('method', '')
+                  if http_method == 'OPTIONS':
+                      return {'statusCode': 200, 'headers': headers, 'body': ''}
+
+                  body_data = event
+                  if 'body' in event and isinstance(event['body'], str):
+                      try: body_data = json.loads(event['body'])
+                      except Exception: body_data = {}
+                          
+                  file_name = body_data.get('fileName', 'uploaded_document.pdf')
+                  file_b64 = body_data.get('fileContentBase64', '')
+                  file_bytes = base64.b64decode(file_b64) if file_b64 else b""
+                  s3_bucket = os.environ.get('S3_BUCKET_NAME')
+                  s3_key = f"uploads/{file_name}"
+                  
+                  logger.info(f"Processing {file_name} ({len(file_bytes)} bytes)")
+                  
+                  # 1. Save file to S3
+                  if file_bytes and s3_bucket:
+                      try:
+                          s3_client = boto3.client('s3')
+                          s3_client.put_object(Bucket=s3_bucket, Key=s3_key, Body=file_bytes)
+                          logger.info(f"Saved to s3://{s3_bucket}/{s3_key}")
+                      except Exception as s3_err:
+                          logger.warning(f"S3 PutObject notice: {str(s3_err)}")
+
+                  # 2. Universal Textract OCR
+                  doc_lines = []
+                  extracted_vendor, extracted_total, extracted_tax, extracted_date, extracted_invoice_num = "", 0.0, 0.0, "", ""
+                  line_items_list = []
+                  
+                  if file_bytes:
+                      # Step A: Textract AnalyzeExpense
+                      try:
+                          textract_client = boto3.client('textract')
+                          expense_res = textract_client.analyze_expense(Document={'Bytes': file_bytes})
+                          for doc in expense_res.get('ExpenseDocuments', []):
+                              for field in doc.get('SummaryFields', []):
+                                  t = field.get('Type', {}).get('Text', '').upper()
+                                  v = field.get('ValueDetection', {}).get('Text', '')
+                                  doc_lines.append(f"{t}: {v}")
+                                  if 'VENDOR' in t or 'NAME' in t: extracted_vendor = v
+                                  elif 'TOTAL' in t:
+                                      try:
+                                          clean_num = re.sub(r'[^\d.]', '', v)
+                                          if clean_num: extracted_total = float(clean_num)
+                                      except Exception: pass
+                                  elif 'TAX' in t:
+                                      try:
+                                          clean_tax = re.sub(r'[^\d.]', '', v)
+                                          if clean_tax: extracted_tax = float(clean_tax)
+                                      except Exception: pass
+                                  elif 'DATE' in t: extracted_date = v
+                                  elif 'INVOICE_RECEIPT_ID' in t: extracted_invoice_num = v
+
+                              for line_group in doc.get('LineItemGroups', []):
+                                  for line_item in line_group.get('LineItems', []):
+                                      item_desc, item_qty, item_price, item_total = "Line Item", 1, 0.0, 0.0
+                                      for l_field in line_item.get('LineItemExpenseFields', []):
+                                          l_type = l_field.get('Type', {}).get('Text', '').upper()
+                                          l_val = l_field.get('ValueDetection', {}).get('Text', '')
+                                          if 'ITEM' in l_type or 'DESCRIPTION' in l_type: item_desc = l_val
+                                          elif 'QUANTITY' in l_type:
+                                              try: item_qty = int(re.sub(r'\D', '', l_val) or '1')
+                                              except Exception: pass
+                                          elif 'PRICE' in l_type:
+                                              try: item_price = float(re.sub(r'[^\d.]', '', l_val) or '0')
+                                              except Exception: pass
+                                          elif 'AMOUNT' in l_type:
+                                              try: item_total = float(re.sub(r'[^\d.]', '', l_val) or '0')
+                                              except Exception: pass
+                                      line_items_list.append({
+                                          'description': item_desc,
+                                          'quantity': item_qty,
+                                          'unitPrice': item_price,
+                                          'total': item_total if item_total > 0 else (item_price * item_qty)
+                                      })
+                      except Exception as exp_err:
+                          logger.info(f"AnalyzeExpense notice: {str(exp_err)}")
+
+                      # Step B: Textract DetectDocumentText
+                      try:
+                          textract_client = boto3.client('textract')
+                          ocr = textract_client.detect_document_text(Document={'Bytes': file_bytes})
+                          for b in ocr.get('Blocks', []):
+                              if b.get('BlockType') == 'LINE':
+                                  txt = b.get('Text', '').strip()
+                                  if txt and txt not in doc_lines:
+                                      doc_lines.append(txt)
+                                      if ':' in txt:
+                                          p = txt.split(':', 1)
+                                          k_part, v_part = p[0].strip(), p[1].strip()
+                                          if v_part and not extracted_vendor and any(k in k_part for k in ['Name', 'Employer', 'Applicant', 'Company']):
+                                              extracted_vendor = v_part
+                                          elif 'Date' in k_part and not extracted_date:
+                                              extracted_date = v_part
+                                          elif any(k in k_part for k in ['ID', 'Number', 'Phone']) and not extracted_invoice_num:
+                                              extracted_invoice_num = v_part
+                      except Exception as ocr_err:
+                          logger.warning(f"DetectDocumentText notice: {str(ocr_err)}")
+
+                  combined_text = "\n".join(doc_lines) if doc_lines else f"Document {file_name}"
+
+                  # 3. Amazon Comprehend
+                  entities = []
+                  key_phrases = []
+                  if len(combined_text.strip()) > 5:
+                      try:
+                          comprehend_client = boto3.client('comprehend')
+                          res = comprehend_client.detect_entities(Text=combined_text[:4000], LanguageCode='en')
+                          entities = [{'text': e['Text'], 'type': e['Type'], 'score': round(e['Score'], 2)} for e in res.get('Entities', [])]
+                          ph_res = comprehend_client.detect_key_phrases(Text=combined_text[:4000], LanguageCode='en')
+                          key_phrases = [ph['Text'][:30] for ph in ph_res.get('KeyPhrases', [])]
+                      except Exception as comp_err:
+                          logger.warning(f"Comprehend notice: {str(comp_err)}")
+
+                  if not extracted_vendor:
+                      extracted_vendor = doc_lines[0][:40] if doc_lines else file_name.rsplit('.', 1)[0].replace('_', ' ').title()
+
+                  if not line_items_list and doc_lines:
+                      for line in doc_lines[:6]:
+                          line_items_list.append({'description': line, 'quantity': 1, 'unitPrice': 0.0, 'total': 0.0})
+
+                  result_payload = {
+                      'id': f"doc-{file_name.replace('.', '-')}",
+                      'fileName': file_name,
+                      'status': 'PROCESSED',
+                      's3Uri': f"s3://{s3_bucket}/{s3_key}" if s3_bucket else f"s3://uploads/{file_name}",
+                      'vendorName': extracted_vendor,
+                      'invoiceNumber': extracted_invoice_num or f"DOC-{abs(hash(file_name)) % 1000000}",
+                      'invoiceDate': extracted_date or "2026-08-12",
+                      'totalAmount': extracted_total,
+                      'taxAmount': extracted_tax,
+                      'paymentMethod': 'Electronic / Document',
+                      'confidenceScore': 99.4,
+                      'lineItems': line_items_list,
+                      'rawText': combined_text[:2000],
+                      'comprehendInsights': {
+                          'entities': entities,
+                          'keyPhrases': key_phrases[:8],
+                          'sentiment': 'NEUTRAL',
+                          'riskFlag': False,
+                          'riskNotes': f"Extracted {len(doc_lines)} text lines & {len(entities)} entities via AWS Textract & Comprehend."
+                      }
                   }
 
-              if 'body' in event or 'fileContentBase64' in event:
-                  try:
-                      body_data = event
-                      if 'body' in event and isinstance(event['body'], str):
-                          body_data = json.loads(event['body'])
-                          
-                      file_name = body_data.get('fileName', 'uploaded_document.pdf')
-                      file_b64 = body_data.get('fileContentBase64', '')
-                      file_bytes = base64.b64decode(file_b64) if file_b64 else b""
-                      s3_bucket = os.environ.get('S3_BUCKET_NAME')
-                      
-                      logger.info(f"Universal Processing for {file_name} ({len(file_bytes)} bytes)")
-                      
-                      # 1. Save File to S3 Bucket
-                      s3_key = f"uploads/{file_name}"
-                      if file_bytes and s3_bucket:
-                          try:
-                              s3_client.put_object(
-                                  Bucket=s3_bucket,
-                                  Key=s3_key,
-                                  Body=file_bytes,
-                                  ContentType='image/png' if file_name.endswith('.png') else 'application/pdf'
-                              )
-                              logger.info(f"Stored file in s3://{s3_bucket}/{s3_key}")
-                          except Exception as s3_err:
-                              logger.warning(f"S3 PutObject warning: {str(s3_err)}")
+                  return {
+                      'statusCode': 200,
+                      'headers': headers,
+                      'body': json.dumps(result_payload)
+                  }
 
-                      # 2. Universal Amazon Textract OCR
-                      extracted_vendor = ""
-                      extracted_total = 0.0
-                      extracted_tax = 0.0
-                      extracted_date = ""
-                      extracted_invoice_num = ""
-                      extracted_payment_method = "Electronic / Document"
-                      line_items_list = []
-                      doc_lines = []
-                      
-                      if file_bytes:
-                          # Step A: Try AnalyzeExpense for Receipts/Invoices
-                          try:
-                              expense_response = textract_client.analyze_expense(Document={'Bytes': file_bytes})
-                              expense_docs = expense_response.get('ExpenseDocuments', [])
-                              if expense_docs:
-                                  first_doc = expense_docs[0]
-                                  for field in first_doc.get('SummaryFields', []):
-                                      type_name = field.get('Type', {}).get('Text', '').upper()
-                                      val_text = field.get('ValueDetection', {}).get('Text', '')
-                                      doc_lines.append(f"{type_name}: {val_text}")
-                                      
-                                      if 'VENDOR' in type_name or 'NAME' in type_name:
-                                          extracted_vendor = val_text
-                                      elif 'TOTAL' in type_name or 'AMOUNT_PAID' in type_name:
-                                          try: extracted_total = float(re.sub(r'[^\d.]', '', val_text))
-                                          except ValueError: pass
-                                      elif 'TAX' in type_name:
-                                          try: extracted_tax = float(re.sub(r'[^\d.]', '', val_text))
-                                          except ValueError: pass
-                                      elif 'DATE' in type_name:
-                                          extracted_date = val_text
-                                      elif 'INVOICE_RECEIPT_ID' in type_name:
-                                          extracted_invoice_num = val_text
-                                      elif 'PAYMENT_METHOD' in type_name:
-                                          extracted_payment_method = val_text
-
-                                  for line_group in first_doc.get('LineItemGroups', []):
-                                      for line_item in line_group.get('LineItems', []):
-                                          item_desc, item_qty, item_price, item_total = "Line Item", 1, 0.0, 0.0
-                                          for l_field in line_item.get('LineItemExpenseFields', []):
-                                              l_type = l_field.get('Type', {}).get('Text', '').upper()
-                                              l_val = l_field.get('ValueDetection', {}).get('Text', '')
-                                              if 'ITEM' in l_type or 'DESCRIPTION' in l_type: item_desc = l_val
-                                              elif 'QUANTITY' in l_type:
-                                                  try: item_qty = int(re.sub(r'\D', '', l_val))
-                                                  except: pass
-                                              elif 'PRICE' in l_type:
-                                                  try: item_price = float(re.sub(r'[^\d.]', '', l_val))
-                                                  except: pass
-                                              elif 'AMOUNT' in l_type:
-                                                  try: item_total = float(re.sub(r'[^\d.]', '', l_val))
-                                                  except: pass
-                                          line_items_list.append({
-                                              'description': item_desc,
-                                              'quantity': item_qty,
-                                              'unitPrice': item_price,
-                                              'total': item_total if item_total > 0 else (item_price * item_qty)
-                                          })
-                          except Exception as exp_err:
-                              logger.info(f"AnalyzeExpense notice: {str(exp_err)}")
-
-                          # Step B: DetectDocumentText for Forms, Applications, Letters, Legal Docs
-                          try:
-                              raw_ocr = textract_client.detect_document_text(Document={'Bytes': file_bytes})
-                              for block in raw_ocr.get('Blocks', []):
-                                  if block.get('BlockType') == 'LINE':
-                                      line_text = block.get('Text', '').strip()
-                                      if line_text and line_text not in doc_lines:
-                                          doc_lines.append(line_text)
-                                          
-                                          # Dynamic parsing for Forms
-                                          if ':' in line_text:
-                                              parts = line_text.split(':', 1)
-                                              k, v = parts[0].strip(), parts[1].strip()
-                                              if v and not extracted_vendor and ('Name' in k or 'Employer' in k or 'Applicant' in k or 'Company' in k):
-                                                  extracted_vendor = v
-                                              elif 'Date' in k and not extracted_date:
-                                                  extracted_date = v
-                                              elif 'ID' in k or 'Number' in k or 'Phone' in k:
-                                                  if not extracted_invoice_num: extracted_invoice_num = v
-                          except Exception as ocr_err:
-                              logger.warning(f"DetectDocumentText warning: {str(ocr_err)}")
-
-                      combined_text = "\n".join(doc_lines) if doc_lines else f"Document {file_name}"
-                      
-                      # 3. Amazon Comprehend NLP
-                      comprehend_entities = []
-                      comprehend_phrases = []
-                      
-                      if len(combined_text.strip()) > 5:
-                          try:
-                              entities_res = comprehend_client.detect_entities(Text=combined_text[:4000], LanguageCode='en')
-                              phrases_res = comprehend_client.detect_key_phrases(Text=combined_text[:4000], LanguageCode='en')
-                              for ent in entities_res.get('Entities', []):
-                                  comprehend_entities.append({'text': ent['Text'], 'type': ent['Type'], 'score': round(ent['Score'], 2)})
-                              for ph in phrases_res.get('KeyPhrases', []):
-                                  comprehend_phrases.append(ph['Text'])
-                          except Exception as comp_err:
-                              logger.warning(f"Comprehend warning: {str(comp_err)}")
-
-                      # Dynamic Vendor Title fallback
-                      if not extracted_vendor:
-                          if doc_lines:
-                              extracted_vendor = doc_lines[0][:40]
-                          else:
-                              extracted_vendor = file_name.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title()
-
-                      # Format lines into readable line items for UI
-                      if not line_items_list and doc_lines:
-                          for line in doc_lines[:6]:
-                              line_items_list.append({
-                                  'description': line,
-                                  'quantity': 1,
-                                  'unitPrice': 0.0,
-                                  'total': 0.0
-                              })
-
-                      result_payload = {
-                          'id': f"doc-{file_name.replace('.', '-')}",
-                          'fileName': file_name,
-                          'status': 'PROCESSED',
-                          's3Uri': f"s3://{s3_bucket}/{s3_key}" if s3_bucket else f"s3://uploads/{file_name}",
-                          'vendorName': extracted_vendor,
-                          'invoiceNumber': extracted_invoice_num or f"DOC-{abs(hash(file_name)) % 1000000}",
-                          'invoiceDate': extracted_date or "2026-08-12",
-                          'totalAmount': extracted_total,
-                          'taxAmount': extracted_tax,
-                          'paymentMethod': extracted_payment_method,
-                          'confidenceScore': 99.4,
-                          'lineItems': line_items_list,
-                          'rawText': combined_text[:2000],
-                          'comprehendInsights': {
-                              'entities': comprehend_entities,
-                              'keyPhrases': comprehend_phrases[:10],
-                              'sentiment': 'NEUTRAL',
-                              'riskFlag': False,
-                              'riskNotes': f"Real AWS Textract extracted {len(doc_lines)} text lines & {len(comprehend_entities)} entities."
-                          }
-                      }
-                      
-                      return {
-                          'statusCode': 200,
-                          'headers': {
-                              'Access-Control-Allow-Origin': '*',
-                              'Access-Control-Allow-Headers': '*',
-                              'Access-Control-Allow-Methods': 'OPTIONS,POST',
-                              'Content-Type': 'application/json'
-                          },
-                          'body': json.dumps(result_payload)
-                      }
-                  except Exception as err:
-                      logger.error("Error processing document: %s", str(err), exc_info=True)
-                      return {
-                          'statusCode': 500,
-                          'headers': {'Access-Control-Allow-Origin': '*'},
-                          'body': json.dumps({'error': str(err)})
-                      }
+              except Exception as top_err:
+                  logger.error(f"Fatal Lambda Error: {str(top_err)}\n{traceback.format_exc()}")
+                  return {
+                      'statusCode': 500,
+                      'headers': headers,
+                      'body': json.dumps({'error': f"Lambda Execution Error: {str(top_err)}"})
+                  }
 
               return {
                   'statusCode': 400,
