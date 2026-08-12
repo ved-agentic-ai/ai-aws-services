@@ -107,10 +107,24 @@ export default function AwsSettingsModal({ awsConfig, setAwsConfig, onClose, liv
             />
           </div>
 
+          {/* API Gateway HTTP API Endpoint */}
+          <div className="space-y-1">
+            <label className="text-slate-300 font-medium flex items-center gap-1.5">
+              <Globe className="h-3.5 w-3.5 text-purple-400" /> Amazon API Gateway HTTP API Endpoint
+            </label>
+            <input
+              type="url"
+              value={formData.apiGatewayUrl || ''}
+              onChange={(e) => setFormData({ ...formData, apiGatewayUrl: e.target.value })}
+              placeholder="https://xyz123.execute-api.us-east-1.amazonaws.com/analyze-document"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-100 font-mono focus:outline-none focus:border-amber-500/50"
+            />
+          </div>
+
           {/* Lambda Function URL (No API Gateway Needed!) */}
           <div className="space-y-1">
             <label className="text-slate-300 font-medium flex items-center gap-1.5">
-              <Globe className="h-3.5 w-3.5 text-amber-400" /> Lambda Function URL (No API Gateway Needed)
+              <Globe className="h-3.5 w-3.5 text-amber-400" /> Lambda Function URL (Secondary / Backup)
             </label>
             <input
               type="url"
@@ -119,16 +133,37 @@ export default function AwsSettingsModal({ awsConfig, setAwsConfig, onClose, liv
               placeholder="https://xyz123.lambda-url.us-east-1.on.aws/"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-100 font-mono focus:outline-none focus:border-amber-500/50"
             />
-            <p className="text-[10px] text-slate-400">
-              In Lambda Console → Configuration → Function URL → Create Function URL (Auth type: NONE, allow CORS).
-            </p>
+          </div>
+
+          {/* Optional Direct AWS Credentials for CloudFormation SDK */}
+          <div className="pt-2 border-t border-slate-800/80 space-y-2">
+            <div className="text-[11px] font-bold text-sky-400 flex items-center gap-1.5">
+              <Shield className="h-3.5 w-3.5" /> Live AWS Credentials (Optional for Direct In-App CloudFormation)
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                value={formData.accessKeyId || ''}
+                onChange={(e) => setFormData({ ...formData, accessKeyId: e.target.value })}
+                placeholder="AWS Access Key ID (AKIA...)"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-slate-100 font-mono text-[11px] focus:outline-none focus:border-sky-500/50"
+              />
+              <input
+                type="password"
+                value={formData.secretAccessKey || ''}
+                onChange={(e) => setFormData({ ...formData, secretAccessKey: e.target.value })}
+                placeholder="AWS Secret Access Key"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-slate-100 font-mono text-[11px] focus:outline-none focus:border-sky-500/50"
+              />
+            </div>
           </div>
 
           {/* Info note */}
           <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
             <Info className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
             <span>
-              <strong>AWS Cloud Quest Note:</strong> Since API Gateway permissions are restricted in Cloud Quest, use the built-in <strong>Lambda Function URL</strong> above to connect directly to your Python Lambda without API Gateway!
+              <strong>Personal AWS Account Note:</strong> Paste your API Gateway URL or Lambda Function URL above to process real documents live on AWS!
             </span>
           </div>
 
