@@ -72,7 +72,34 @@ export default function CloudFormationVisualizer({ awsConfig, setAwsConfig, setL
     }
   ];
 
-  // Real AWS CloudFormation Live Deploy / Simulator
+  // Auto-detect existing AWS stack on mount or config change
+  React.useEffect(() => {
+    let isMounted = true;
+    const checkStackStatus = async () => {
+      if (awsConfig.accessKeyId && awsConfig.secretAccessKey) {
+        try {
+          const { CloudFormationClient, DescribeStacksCommand } = await import('@aws-sdk/client-cloudformation');
+          const cfClient = new CloudFormationClient({
+            region: awsConfig.region || 'us-east-1',
+            credentials: {
+              accessKeyId: awsConfig.accessKeyId,
+              secretAccessKey: awsConfig.secretAccessKey
+            }
+          });
+          const desc = await cfClient.send(new DescribeStacksCommand({ StackName: 'payment-ai-stack' }));
+          const stack = desc.Stacks?.[0];
+          if (isMounted && stack && (stack.StackStatus === 'CREATE_COMPLETE' || stack.StackStatus === 'UPDATE_COMPLETE')) {
+            setDeployState('DEPLOYED');
+            setCurrentStepIndex(STACK_RESOURCES.length - 1);
+          }
+        } catch (err) {
+          // Stack does not exist or failed to describe
+        }
+      }
+    };
+    checkStackStatus();
+    return () => { isMounted = false; };
+  }, [awsConfig.accessKeyId, awsConfig.secretAccessKey]);
   const handleSimulateDeploy = async () => {
     if (awsConfig.accessKeyId && awsConfig.secretAccessKey) {
       // Real AWS SDK Execution
@@ -398,25 +425,15 @@ Outputs:
               <>
                 <button
                   onClick={handleSimulateDeploy}
-                  disabled={deployState === 'DEPLOYED'}
-                  className={`px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-lg ${
-                    deployState === 'DEPLOYED'
-                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                      : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-amber-500/20'
-                  }`}
+                  className="px-4 py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <Play className="h-4 w-4 fill-current" />
-                  {deployState === 'DEPLOYED' ? 'Stack Deployed (Active)' : 'Launch CloudFormation Stack'}
+                  {deployState === 'DEPLOYED' ? 'Re-Deploy / Update Stack' : 'Launch CloudFormation Stack'}
                 </button>
 
                 <button
                   onClick={handleSimulateTeardown}
-                  disabled={deployState === 'IDLE' || deployState === 'DELETED'}
-                  className={`px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 border shadow-lg ${
-                    deployState === 'IDLE' || deployState === 'DELETED'
-                      ? 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed'
-                      : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-rose-500/10'
-                  }`}
+                  className="px-4 py-2.5 rounded-xl font-bold text-xs bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/50 shadow-lg shadow-rose-500/20 transition-all flex items-center gap-2 cursor-pointer animate-pulse-subtle"
                 >
                   <Trash2 className="h-4 w-4" />
                   Teardown Stack (Delete All AWS)
