@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, Image as ImageIcon, FileCode, CheckCircle2, ArrowRight, Loader2, Cpu, Zap, Database, Sparkles, AlertCircle } from 'lucide-react';
-import { simulateAwsPipeline } from '../services/awsPipeline';
+import { executeAwsPipeline } from '../services/awsPipeline';
 
 export default function UploadSection({ onDocumentProcessed, awsConfig, liveMode }) {
   const [dragActive, setDragActive] = useState(false);
@@ -35,23 +35,10 @@ export default function UploadSection({ onDocumentProcessed, awsConfig, liveMode
     setIsProcessing(true);
 
     try {
-      if (liveMode && awsConfig.apiGatewayUrl) {
-        // Direct AWS Live API execution
-        setCurrentStep({
-          stage: 'LIVE_AWS',
-          label: 'AWS Cloud Quest Live Execution',
-          detail: `Sending ${file.name} to ${awsConfig.apiGatewayUrl}...`,
-          progress: 50
-        });
-
-        // Simulate short network delay for live endpoint
-        await new Promise(r => setTimeout(r, 1500));
-      }
-
-      // Execute simulated 5-step AWS pipeline visualizer
-      const parsedDoc = await simulateAwsPipeline(file, (stepInfo) => {
+      // Execute AWS pipeline (Live Lambda / Function URL or Simulator)
+      const parsedDoc = await executeAwsPipeline(file, (stepInfo) => {
         setCurrentStep(stepInfo);
-      });
+      }, awsConfig, liveMode);
 
       onDocumentProcessed(parsedDoc);
     } catch (err) {

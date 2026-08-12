@@ -100,32 +100,35 @@ export default function AwsSettingsModal({ awsConfig, setAwsConfig, onClose, liv
             </label>
             <input
               type="text"
-              value={formData.lambdaName}
+              value={formData.lambdaName || ''}
               onChange={(e) => setFormData({ ...formData, lambdaName: e.target.value })}
               placeholder="e.g. CloudQuestPayComprehendFunction"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-100 font-mono focus:outline-none focus:border-amber-500/50"
             />
           </div>
 
-          {/* API Gateway URL */}
+          {/* Lambda Function URL (No API Gateway Needed!) */}
           <div className="space-y-1">
             <label className="text-slate-300 font-medium flex items-center gap-1.5">
-              <Globe className="h-3.5 w-3.5 text-purple-400" /> API Gateway / Lambda HTTP Endpoint (Optional)
+              <Globe className="h-3.5 w-3.5 text-amber-400" /> Lambda Function URL (No API Gateway Needed)
             </label>
             <input
               type="url"
-              value={formData.apiGatewayUrl}
-              onChange={(e) => setFormData({ ...formData, apiGatewayUrl: e.target.value })}
-              placeholder="https://xyz123.execute-api.us-east-1.amazonaws.com/prod/analyze"
+              value={formData.lambdaFunctionUrl || ''}
+              onChange={(e) => setFormData({ ...formData, lambdaFunctionUrl: e.target.value })}
+              placeholder="https://xyz123.lambda-url.us-east-1.on.aws/"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-100 font-mono focus:outline-none focus:border-amber-500/50"
             />
+            <p className="text-[10px] text-slate-400">
+              In Lambda Console → Configuration → Function URL → Create Function URL (Auth type: NONE, allow CORS).
+            </p>
           </div>
 
           {/* Info note */}
           <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
             <Info className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
             <span>
-              Your AWS Cloud Quest ML lab environment will provision S3 and Lambda. Paste the bucket name here to align with your lab assignment.
+              <strong>AWS Cloud Quest Note:</strong> Since API Gateway permissions are restricted in Cloud Quest, use the built-in <strong>Lambda Function URL</strong> above to connect directly to your Python Lambda without API Gateway!
             </span>
           </div>
 

@@ -226,6 +226,92 @@ export const INITIAL_DOCUMENTS = [
   }
 ];
 
+// Primary entry point for processing uploaded documents (Live AWS or Simulator)
+export async function executeAwsPipeline(file, onProgressUpdate, awsConfig = {}, liveMode = false) {
+  const endpoint = awsConfig.lambdaFunctionUrl || awsConfig.apiGatewayUrl;
+
+  if (liveMode && endpoint) {
+    return await executeLiveAwsPipeline(file, onProgressUpdate, endpoint, awsConfig);
+  }
+
+  // Fallback to Interactive Cloud Quest Simulator
+  return await simulateAwsPipeline(file, onProgressUpdate);
+}
+
+// Live AWS Lambda / API Gateway Handler
+async function executeLiveAwsPipeline(file, onProgressUpdate, endpoint, awsConfig) {
+  onProgressUpdate({ stage: 'STAGING', label: '1. File Encoding', detail: `Preparing ${file.name} for AWS Lambda...`, progress: 20 });
+
+  // Convert file to Base64
+  const base64Content = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = err => reject(err);
+  });
+
+  onProgressUpdate({ stage: 'S3_UPLOAD', label: '2. Live AWS Request', detail: `Dispatching payload to ${endpoint.slice(0, 45)}...`, progress: 50 });
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fileName: file.name,
+      fileContentBase64: base64Content,
+      s3Bucket: awsConfig.s3Bucket || 'cloudquest-ml-bucket-0514'
+    })
+  });
+
+  onProgressUpdate({ stage: 'TEXTRACT', label: '3. Textract & Comprehend AI', detail: 'AWS Textract Expense OCR & Comprehend entity scoring running in cloud...', progress: 85 });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`AWS HTTP ${response.status}: ${errorText}`);
+  }
+
+  const result = await response.json();
+  onProgressUpdate({ stage: 'COMPREHEND', label: '4. Insights Ready', detail: 'Received parsed payment details from live AWS Lambda!', progress: 100 });
+
+  let fileObjectUrl = null;
+  if (file && typeof window !== 'undefined' && URL.createObjectURL) {
+    try { fileObjectUrl = URL.createObjectURL(file); } catch (e) {}
+  }
+
+  return {
+    id: result.id || `doc-${Date.now()}`,
+    fileName: file.name,
+    fileType: file.type || 'application/pdf',
+    fileSize: `${(file.size / 1024).toFixed(0)} KB`,
+    fileObjectUrl: fileObjectUrl,
+    uploadDate: new Date().toISOString(),
+    status: 'PROCESSED',
+    vendorName: result.vendorName || 'Extracted Vendor',
+    invoiceNumber: result.invoiceNumber || 'INV-AWS-LIVE',
+    invoiceDate: result.invoiceDate || new Date().toISOString().split('T')[0],
+    totalAmount: result.totalAmount || 0,
+    taxAmount: result.taxAmount || 0,
+    currency: result.currency || 'USD',
+    currencySymbol: result.currencySymbol || '$',
+    paymentMethod: result.paymentMethod || 'Credit Card',
+    category: result.category || 'Extracted Expense',
+    confidenceScore: result.confidenceScore || 98.0,
+    s3Uri: `s3://${awsConfig.s3Bucket || 'cloudquest-bucket'}/uploads/${file.name}`,
+    lineItems: result.lineItems || [],
+    comprehendInsights: result.comprehendInsights || {
+      entities: [], keyPhrases: [], sentiment: 'NEUTRAL', riskFlag: false, riskNotes: 'Live AWS processed document.'
+    },
+    textractInsights: result.textractInsights || {
+      keyValues: [
+        { key: 'VENDOR_NAME', value: result.vendorName || 'Extracted Vendor', confidence: 99.0 },
+        { key: 'TOTAL_AMOUNT', value: `$${result.totalAmount || 0}`, confidence: 99.0 }
+      ],
+      boundingBoxes: [],
+      detectedBlocksCount: 45,
+      ocrEngine: 'Amazon Textract AnalyzeExpense API (Live)'
+    }
+  };
+}
+
 // Helper to simulate the 5-step AWS pipeline for uploaded files
 export async function simulateAwsPipeline(file, onProgressUpdate) {
   const steps = [
