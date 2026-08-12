@@ -22,12 +22,9 @@ export default function UploadSection({ onDocumentProcessed, awsConfig, liveMode
   const processFile = async (file) => {
     if (!file) return;
 
-    // Validate file extensions
-    const validExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'];
-    const ext = file.name.split('.').pop().toLowerCase();
-    
-    if (!validExtensions.includes(ext)) {
-      setErrorMsg(`Unsupported file type (.${ext}). Please upload PDF, PNG, JPG, or DOC files.`);
+    // Validate file size under 50MB
+    if (file.size > 50 * 1024 * 1024) {
+      setErrorMsg(`File size exceeds 50MB limit.`);
       return;
     }
 

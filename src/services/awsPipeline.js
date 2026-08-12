@@ -448,22 +448,27 @@ export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}
   }
 
   const fileNameLower = (file.name || '').toLowerCase();
+  const fileBasename = file.name ? file.name.split('.')[0].replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Document';
 
   const isMarkPayment = fileNameLower.includes('mark') || fileNameLower.includes('zigbank') || fileNameLower.includes('spencer');
   const isEventPayment = !isMarkPayment && (fileNameLower.includes('event-payment') || fileNameLower.includes('invotech'));
   const isEmploymentForm = fileNameLower.includes('employment') || fileNameLower.includes('form') || fileNameLower.includes('application') || fileNameLower.includes('job') || fileNameLower.includes('applicant');
 
+  // Dynamic values for any unknown file
+  const extractedNumbers = (file.name.match(/\d+/g) || []).join('');
+  const dynamicDocId = extractedNumbers ? `DOC-${extractedNumbers}` : `DOC-${Math.abs(hashString(file.name)) % 1000000}`;
+
   let matchedVendor = {
-    vendorName: isMarkPayment ? 'ZigBank (Mark & Spencer)' : (isEventPayment ? 'Invotech Solutions' : (isEmploymentForm ? 'Jane Doe (Employment Application)' : file.name.split('.')[0].replace(/[_-]/g, ' '))),
-    invoiceNumber: isMarkPayment ? 'AT3OUPA14002CC27' : (isEventPayment ? 'eo-123456' : (isEmploymentForm ? 'APP-2026-8801' : `DOC-${Math.floor(100000 + Math.random() * 900000)}`)),
+    vendorName: isMarkPayment ? 'ZigBank (Mark & Spencer)' : (isEventPayment ? 'Invotech Solutions' : (isEmploymentForm ? 'Jane Doe (Employment Application)' : fileBasename)),
+    invoiceNumber: isMarkPayment ? 'AT3OUPA14002CC27' : (isEventPayment ? 'eo-123456' : (isEmploymentForm ? 'APP-2026-8801' : dynamicDocId)),
     invoiceDate: isMarkPayment ? '2017-11-20' : (isEventPayment ? '2013-05-17' : new Date().toISOString().split('T')[0]),
     totalAmount: isMarkPayment ? 10.00 : (isEventPayment ? 125.00 : 0.00),
     taxAmount: isMarkPayment ? 0.00 : (isEventPayment ? 25.00 : 0.00),
     currency: isMarkPayment ? 'GBP' : (isEventPayment ? 'EUR' : 'USD'),
     currencySymbol: isMarkPayment ? '£' : (isEventPayment ? '€' : '$'),
-    paymentMethod: isMarkPayment ? 'Internal Transfer (Acc: XXXXXXXXXXXX0028)' : (isEventPayment ? 'Bank giro 123456789' : (isEmploymentForm ? 'Job Application / HR Form' : 'Electronic / Document')),
+    paymentMethod: isMarkPayment ? 'Internal Transfer (Acc: XXXXXXXXXXXX0028)' : (isEventPayment ? 'Bank giro 123456789' : (isEmploymentForm ? 'Job Application / HR Form' : 'Document Direct Record')),
     category: isMarkPayment ? 'Banking & Internal Transfer' : (isEventPayment ? 'Event & Communication' : (isEmploymentForm ? 'Employment & HR' : 'Document Processing')),
-    confidenceScore: 99.6,
+    confidenceScore: 99.4,
     lineItems: isMarkPayment ? [
       { description: 'Internal Transfer to Mark & Spencer (Acc: XXXXXXXXXXXX0028)', quantity: 1, unitPrice: 10.00, total: 10.00 },
       { description: 'Purpose: Transaction is a general cash management instruction', quantity: 1, unitPrice: 0.00, total: 0.00 }
@@ -477,8 +482,8 @@ export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}
       { description: 'Previous Position: Baker @ Best Corp. (2011-2013)', quantity: 1, unitPrice: 0.00, total: 0.00 },
       { description: 'Previous Position: Assistant Baker @ Any Company (2009-2011)', quantity: 1, unitPrice: 0.00, total: 0.00 }
     ] : [
-      { description: `Document ${file.name} Extracted Text Line 1`, quantity: 1, unitPrice: 0.00, total: 0.00 },
-      { description: `Document ${file.name} Extracted Text Line 2`, quantity: 1, unitPrice: 0.00, total: 0.00 }
+      { description: `${fileBasename} Record Line 1`, quantity: 1, unitPrice: 0.00, total: 0.00 },
+      { description: `${fileBasename} Record Line 2`, quantity: 1, unitPrice: 0.00, total: 0.00 }
     ])),
     entities: isMarkPayment ? [
       { text: 'ZigBank', type: 'ORGANIZATION', score: 0.99 },
@@ -508,12 +513,14 @@ export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}
       { text: 'Any Company', type: 'ORGANIZATION', score: 0.96 },
       { text: 'Head Baker', type: 'TITLE', score: 0.97 }
     ] : [
-      { text: file.name.split('.')[0], type: 'DOCUMENT_TITLE', score: 0.98 }
+      { text: fileBasename, type: 'DOCUMENT_TITLE', score: 0.99 },
+      { text: file.name, type: 'FILENAME', score: 0.98 },
+      { text: `${(file.size / 1024).toFixed(1)} KB`, type: 'FILESIZE', score: 0.95 }
     ])),
-    keyPhrases: isMarkPayment ? ['ZigBank', 'General Electric', 'Mark & Spencer', 'INTERNAL PAY NOW', 'AT3OUPA14002CC27', 'GBP 10.00'] : (isEventPayment ? ['Invotech Solutions', 'Brit Ritish', 'Per Andersson', '30 days net', 'Bank giro 123456789', 'IBAN AABBCCC'] : (isEmploymentForm ? ['Jane Doe', 'Employment Application', 'Head Baker', 'Example Corp', '555-0100'] : [file.name])),
+    keyPhrases: isMarkPayment ? ['ZigBank', 'General Electric', 'Mark & Spencer', 'INTERNAL PAY NOW', 'AT3OUPA14002CC27', 'GBP 10.00'] : (isEventPayment ? ['Invotech Solutions', 'Brit Ritish', 'Per Andersson', '30 days net', 'Bank giro 123456789', 'IBAN AABBCCC'] : (isEmploymentForm ? ['Jane Doe', 'Employment Application', 'Head Baker', 'Example Corp', '555-0100'] : [fileBasename, file.name])),
     sentiment: 'NEUTRAL',
     riskFlag: false,
-    riskNotes: isMarkPayment ? 'Extracted ZigBank internal payment details (Mark & Spencer, GBP 10.00).' : (isEventPayment ? 'Extracted event-payment invoice details (Invotech Solutions, Brit Ritish, 125 EUR).' : (isEmploymentForm ? 'Extracted Employment Application details (Jane Doe, Head Baker at Example Corp.).' : `Processed document ${file.name}.`)),
+    riskNotes: isMarkPayment ? 'Extracted ZigBank internal payment details (Mark & Spencer, GBP 10.00).' : (isEventPayment ? 'Extracted event-payment invoice details (Invotech Solutions, Brit Ritish, 125 EUR).' : (isEmploymentForm ? 'Extracted Employment Application details (Jane Doe, Head Baker at Example Corp.).' : `Processed document ${file.name} successfully.`)),
     textractRawText: isMarkPayment ? [
       'ZigBank', 'General Electric', '20 Nov 2017 11:49:46', 'INTERNAL PAY NOW',
       'Reference Number', 'AT3OUPA14002CC27', 'Transfer to', 'Mark & Spencer',
@@ -538,7 +545,7 @@ export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}
       '1/15/2009', '6/30/2011', 'Any Company', 'Assistant Baker', 'Family relocated',
       '7/1/2011', '8/10/2013', 'Best Corp.', 'Baker', 'Better opportunity',
       '8/15/2013', 'present', 'Example Corp.', 'Head Baker', 'N/A, current employer'
-    ] : [file.name, 'Extracted Document Content'])),
+    ] : [fileBasename, 'DOCUMENT RECORD', file.name, `${(file.size / 1024).toFixed(1)} KB`, 'STATUS: PROCESSED', 'Amazon Textract OCR Analyzed'])),
     textractKeyValues: isMarkPayment ? [
       { key: 'Reference Number', value: 'AT3OUPA14002CC27', confidence: 99.8 },
       { key: 'Transfer to', value: 'Mark & Spencer', confidence: 99.6 },
@@ -565,7 +572,12 @@ export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}
       { key: 'VAT-nbr', value: 'SE697051697', confidence: 98.9 },
       { key: 'IBAN', value: 'AABBCCC CCCCC DDDD EEEEEEE', confidence: 99.6 },
       { key: 'SWIFT/BIC', value: 'ABCDEFGH', confidence: 99.2 }
-    ] : null),
+    ] : [
+      { key: 'DOCUMENT_NAME', value: file.name, confidence: 99.9 },
+      { key: 'DOCUMENT_TITLE', value: fileBasename, confidence: 99.5 },
+      { key: 'FILE_SIZE', value: `${(file.size / 1024).toFixed(1)} KB`, confidence: 99.8 },
+      { key: 'STATUS', value: 'PROCESSED', confidence: 100.0 }
+    ]),
     textractTables: isMarkPayment ? [
       {
         headers: ['Field', 'Details'],
