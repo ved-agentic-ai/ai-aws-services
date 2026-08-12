@@ -126,6 +126,7 @@ Resources:
       ApiId: !Ref HttpApiGateway
       IntegrationType: AWS_PROXY
       IntegrationUri: !GetAtt PaymentProcessorFunction.Arn
+      PayloadFormatVersion: '2.0'
   HttpApiRoute:
     Type: AWS::ApiGatewayV2::Route
     Properties:
