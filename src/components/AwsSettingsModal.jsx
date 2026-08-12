@@ -1,9 +1,58 @@
-import React, { useState } from 'react';
-import { X, Settings, Database, Zap, Shield, Globe, Save, CheckCircle2, Info } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Settings, Database, Zap, Shield, Globe, Save, CheckCircle2, Info, FileUp, Sparkles } from 'lucide-react';
 
 export default function AwsSettingsModal({ awsConfig, setAwsConfig, onClose, liveMode, setLiveMode }) {
   const [formData, setFormData] = useState({ ...awsConfig });
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [csvSuccessMsg, setCsvSuccessMsg] = useState(null);
+  const csvInputRef = useRef(null);
+
+  const handleCsvUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result || '';
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      
+      let keyId = '';
+      let secretKey = '';
+
+      lines.forEach(line => {
+        const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+        // Standard AWS CSV headers: Access key ID,Secret access key
+        if (parts.length >= 2) {
+          if (parts[0].startsWith('AKIA') || parts[0].startsWith('ASIA')) {
+            keyId = parts[0];
+            secretKey = parts[1];
+          } else if (parts[1] && (parts[1].startsWith('AKIA') || parts[1].startsWith('ASIA'))) {
+            keyId = parts[1];
+            secretKey = parts[2] || parts[0];
+          }
+        }
+      });
+
+      // Fallback: search for AKIA pattern
+      if (!keyId) {
+        const akiaMatch = text.match(/(AKIA[A-Z0-9]{16})/);
+        if (akiaMatch) keyId = akiaMatch[1];
+      }
+
+      if (keyId) {
+        setFormData(prev => ({
+          ...prev,
+          accessKeyId: keyId,
+          secretAccessKey: secretKey || prev.secretAccessKey
+        }));
+        setCsvSuccessMsg(`Loaded credentials (${keyId.slice(0, 8)}...)`);
+        setTimeout(() => setCsvSuccessMsg(null), 4000);
+      } else {
+        alert("Could not detect valid AWS Access Key ID (AKIA...) in this CSV file.");
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -137,9 +186,34 @@ export default function AwsSettingsModal({ awsConfig, setAwsConfig, onClose, liv
 
           {/* Optional Direct AWS Credentials for CloudFormation SDK */}
           <div className="pt-2 border-t border-slate-800/80 space-y-2">
-            <div className="text-[11px] font-bold text-sky-400 flex items-center gap-1.5">
-              <Shield className="h-3.5 w-3.5" /> Live AWS Credentials (Optional for Direct In-App CloudFormation)
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-bold text-sky-400 flex items-center gap-1.5">
+                <Shield className="h-3.5 w-3.5" /> Live AWS Credentials
+              </div>
+
+              {/* 1-Click Upload AWS Credentials CSV */}
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleCsvUpload}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => csvInputRef.current?.click()}
+                className="px-2.5 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all"
+              >
+                <FileUp className="h-3 w-3" /> Auto-Import from accessKeys.csv
+              </button>
             </div>
+
+            {csvSuccessMsg && (
+              <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] flex items-center gap-2">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                <span>{csvSuccessMsg}</span>
+              </div>
+            )}
             
             <div className="grid grid-cols-2 gap-2">
               <input
