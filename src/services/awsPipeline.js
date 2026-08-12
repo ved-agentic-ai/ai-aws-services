@@ -239,8 +239,14 @@ export async function executeAwsPipeline(file, onProgressUpdate, awsConfig = {},
 }
 
 // Live AWS Lambda / API Gateway Handler
-async function executeLiveAwsPipeline(file, onProgressUpdate, endpoint, awsConfig) {
+async function executeLiveAwsPipeline(file, onProgressUpdate, rawEndpoint, awsConfig) {
   onProgressUpdate({ stage: 'STAGING', label: '1. File Encoding', detail: `Preparing ${file.name} for AWS Lambda...`, progress: 20 });
+
+  // Format endpoint URL properly
+  let endpoint = rawEndpoint.trim();
+  if (endpoint.includes('execute-api') && !endpoint.endsWith('/analyze-document')) {
+    endpoint = endpoint.replace(/\/+$/, '') + '/analyze-document';
+  }
 
   // Convert file to Base64
   const base64Content = await new Promise((resolve, reject) => {
@@ -252,15 +258,23 @@ async function executeLiveAwsPipeline(file, onProgressUpdate, endpoint, awsConfi
 
   onProgressUpdate({ stage: 'S3_UPLOAD', label: '2. Live AWS Request', detail: `Dispatching payload to ${endpoint.slice(0, 45)}...`, progress: 50 });
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      fileName: file.name,
-      fileContentBase64: base64Content,
-      s3Bucket: awsConfig.s3Bucket || 'cloudquest-ml-bucket-0514'
-    })
-  });
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileContentBase64: base64Content,
+        s3Bucket: awsConfig.s3Bucket || 'cloudquest-ml-bucket-0514'
+      })
+    });
+  } catch (netErr) {
+    console.error("AWS Network / CORS error:", netErr);
+    throw new Error(
+      `CORS / Network Error to ${endpoint}: Please verify that the URL in AWS Settings ends with '/analyze-document' and your CloudFormation stack status is CREATE_COMPLETE.`
+    );
+  }
 
   onProgressUpdate({ stage: 'TEXTRACT', label: '3. Textract & Comprehend AI', detail: 'AWS Textract Expense OCR & Comprehend entity scoring running in cloud...', progress: 85 });
 
