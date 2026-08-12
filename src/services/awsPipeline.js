@@ -585,7 +585,6 @@ export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}
         ]
       }
     ] : null)
-  };: null
   };
 
   // 1. Accurate Match for Employment Forms (Matching employment_form.png)
