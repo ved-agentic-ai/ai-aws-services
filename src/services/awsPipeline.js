@@ -390,6 +390,16 @@ async function executeLiveAwsPipeline(file, onProgressUpdate, rawEndpoint, awsCo
   };
 }
 
+function hashString(str = '') {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
 // Helper to simulate the 5-step AWS pipeline for uploaded files
 export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}) {
   // Direct S3 Upload via AWS SDK if credentials exist (EVEN IN SIMULATOR / LAB MODE!)
