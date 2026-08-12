@@ -286,8 +286,9 @@ Resources:
       ProtocolType: HTTP
       CorsConfiguration:
         AllowOrigins: ['*']
-        AllowMethods: [POST, OPTIONS]
-        AllowHeaders: ['Content-Type', 'Authorization']
+        AllowMethods: ['*']
+        AllowHeaders: ['*']
+        MaxAge: 300
 
   # 7. API Gateway Integration with Lambda
   HttpApiIntegration:
@@ -303,7 +304,7 @@ Resources:
     Type: AWS::ApiGatewayV2::Route
     Properties:
       ApiId: !Ref HttpApiGateway
-      RouteKey: 'POST /analyze-document'
+      RouteKey: '$default'
       Target: !Join ['/', ['integrations', !Ref HttpApiIntegration]]
 
   # 9. API Gateway Stage AutoDeploy

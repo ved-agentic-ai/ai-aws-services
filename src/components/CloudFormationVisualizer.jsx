@@ -246,7 +246,7 @@ Resources:
     Properties:
       Name: PaymentDocApi
       ProtocolType: HTTP
-      CorsConfiguration: { AllowOrigins: ['*'], AllowMethods: [POST, OPTIONS], AllowHeaders: ['*'] }
+      CorsConfiguration: { AllowOrigins: ['*'], AllowMethods: ['*'], AllowHeaders: ['*'], MaxAge: 300 }
   HttpApiIntegration:
     Type: AWS::ApiGatewayV2::Integration
     Properties:
@@ -258,7 +258,7 @@ Resources:
     Type: AWS::ApiGatewayV2::Route
     Properties:
       ApiId: !Ref HttpApiGateway
-      RouteKey: 'POST /analyze-document'
+      RouteKey: '$default'
       Target: !Join ['/', ['integrations', !Ref HttpApiIntegration]]
   HttpApiStage:
     Type: AWS::ApiGatewayV2::Stage
