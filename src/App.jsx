@@ -5,14 +5,15 @@ import Dashboard from './components/Dashboard';
 import DocumentExplorer from './components/DocumentExplorer';
 import DocumentDetailModal from './components/DocumentDetailModal';
 import AwsSettingsModal from './components/AwsSettingsModal';
+import CloudFormationVisualizer from './components/CloudFormationVisualizer';
 import { INITIAL_DOCUMENTS } from './services/awsPipeline';
 import { 
-  LayoutDashboard, Upload, Database, Code, CheckCircle2, ShieldCheck, Terminal, ExternalLink, Sparkles, FileText, ArrowRight 
+  LayoutDashboard, Upload, Database, Code, CheckCircle2, ShieldCheck, Terminal, ExternalLink, Sparkles, FileText, ArrowRight, Cloud 
 } from 'lucide-react';
 
 export default function App() {
   const [documents, setDocuments] = useState(INITIAL_DOCUMENTS);
-  const [activeTab, setActiveTab] = useState('DASHBOARD'); // DASHBOARD | UPLOAD | EXPLORER | AWS_GUIDE
+  const [activeTab, setActiveTab] = useState('DASHBOARD'); // DASHBOARD | UPLOAD | EXPLORER | AWS_GUIDE | CLOUDFORMATION
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [liveMode, setLiveMode] = useState(false);
@@ -23,6 +24,7 @@ export default function App() {
     region: 'us-east-1',
     lambdaName: 'CloudQuestPayComprehendFunction',
     apiGatewayUrl: '',
+    lambdaFunctionUrl: '',
     iamRoleArn: 'arn:aws:iam::123456789012:role/CloudQuestLambdaRole'
   });
 
@@ -85,6 +87,17 @@ export default function App() {
               }`}
             >
               <Database className="h-4 w-4" /> Document Explorer ({documents.length})
+            </button>
+
+            <button
+              onClick={() => setActiveTab('CLOUDFORMATION')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'CLOUDFORMATION'
+                  ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              }`}
+            >
+              <Cloud className="h-4 w-4 text-sky-400" /> CloudFormation & Teardown
             </button>
 
             <button
@@ -181,7 +194,16 @@ export default function App() {
           />
         )}
 
-        {/* TAB 4: AWS BACKEND & LAMBDA CODE */}
+        {/* TAB 4: CLOUDFORMATION & TEARDOWN */}
+        {activeTab === 'CLOUDFORMATION' && (
+          <CloudFormationVisualizer
+            awsConfig={awsConfig}
+            setAwsConfig={setAwsConfig}
+            setLiveMode={setLiveMode}
+          />
+        )}
+
+        {/* TAB 5: AWS BACKEND & LAMBDA CODE */}
         {activeTab === 'AWS_GUIDE' && (
           <div className="space-y-6">
             <div className="p-6 rounded-2xl glass-panel space-y-4">
