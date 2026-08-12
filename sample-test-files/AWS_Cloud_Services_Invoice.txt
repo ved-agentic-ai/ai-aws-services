@@ -1,0 +1,40 @@
+================================================================================
+                       AMAZON WEB SERVICES - INVOICE
+================================================================================
+Invoice Number:    INV-AWS-2026-98124
+Invoice Date:      August 1, 2026
+Billing Period:    July 1, 2026 - July 31, 2026
+Account ID:        1234-5678-9012
+Tax Registration:  US-AWS-992014
+
+Vendor:
+  Amazon Web Services, Inc.
+  410 Terry Avenue North
+  Seattle, WA 98109-5210
+  United States
+
+Customer:
+  CloudQuest Enterprise Labs
+  100 Innovation Way
+  Tech District, CA 94105
+
+--------------------------------------------------------------------------------
+LINE ITEMS & USAGE BREAKDOWN
+--------------------------------------------------------------------------------
+Item #  Description                                    Qty      Rate ($)   Total ($)
+--------------------------------------------------------------------------------
+01.     Amazon EC2 t3.xlarge Linux Instance            720 hrs  0.1660     119.52
+02.     Amazon S3 Standard Storage (5 TB)              5,000 GB 0.0230     115.00
+03.     AWS Lambda Function Executions (25M requests)  25 M     0.2000       5.00
+04.     Amazon Comprehend Entity Detection Units       850 k    0.0001      85.00
+05.     Amazon Textract Expense OCR Analysis API       1,500    0.0100      15.00
+06.     AWS CloudQuest Machine Learning Support Tier   1        994.73     994.73
+
+--------------------------------------------------------------------------------
+SUBTOTAL:                                                              $1,334.25
+STATE & LOCAL TAX (11.1%):                                               $148.25
+TOTAL AMOUNT DUE:                                                      $1,482.50
+--------------------------------------------------------------------------------
+PAYMENT METHOD: Corporate Credit Card (Visa ending in 9012)
+PAYMENT STATUS: PAID IN FULL - THANK YOU FOR YOUR BUSINESS
+================================================================================
