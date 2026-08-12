@@ -263,8 +263,8 @@ async function executeLiveAwsPipeline(file, onProgressUpdate, rawEndpoint, awsCo
   // Direct S3 Upload via AWS SDK if credentials exist
   if (awsConfig.accessKeyId && awsConfig.secretAccessKey) {
     try {
-      onProgressUpdate({ stage: 'S3_UPLOAD', label: '2. S3 Direct Upload', detail: `Writing file to AWS S3 Bucket ${awsConfig.s3Bucket || 'payment-ai-stack-paymentdocumentbucket'}...`, progress: 40 });
-      const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+      onProgressUpdate({ stage: 'S3_UPLOAD', label: '2. S3 Direct Upload', detail: `Writing file to AWS S3 Bucket...`, progress: 40 });
+      const { S3Client, PutObjectCommand, ListBucketsCommand } = await import('@aws-sdk/client-s3');
       const s3Client = new S3Client({
         region: awsConfig.region || 'us-east-1',
         credentials: {
@@ -273,8 +273,23 @@ async function executeLiveAwsPipeline(file, onProgressUpdate, rawEndpoint, awsCo
         }
       });
 
-      // Target bucket name
-      const targetBucket = awsConfig.s3Bucket || 'payment-ai-stack-paymentdocumentbucket-yjxtkpxjyr63';
+      // Auto-discover target bucket from user AWS account
+      let targetBucket = awsConfig.s3Bucket;
+      try {
+        const bucketsRes = await s3Client.send(new ListBucketsCommand({}));
+        const foundBucket = bucketsRes.Buckets?.find(b => b.Name && (b.Name.includes('paymentdocumentbucket') || b.Name.includes('payment-ai-stack')));
+        if (foundBucket) {
+          targetBucket = foundBucket.Name;
+          console.log("Auto-discovered AWS S3 Bucket:", targetBucket);
+        }
+      } catch (e) {
+        console.warn("Bucket listing fallback:", e);
+      }
+
+      if (!targetBucket || targetBucket.includes('cloudquest')) {
+        targetBucket = 'payment-ai-stack-paymentdocumentbucket-yjxtkpxjyr63';
+      }
+
       const fileBuffer = new Uint8Array(await file.arrayBuffer());
 
       await s3Client.send(new PutObjectCommand({
@@ -284,6 +299,7 @@ async function executeLiveAwsPipeline(file, onProgressUpdate, rawEndpoint, awsCo
         ContentType: file.type || 'image/png'
       }));
       console.log(`Direct S3 Upload Success: s3://${targetBucket}/uploads/${file.name}`);
+      awsConfig.s3Bucket = targetBucket;
     } catch (s3Err) {
       console.warn("Direct S3 upload attempt:", s3Err);
     }
