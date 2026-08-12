@@ -447,22 +447,24 @@ export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}
     }
   }
 
-  const fileNameLower = (file.name || '').toLowerCase();
-
+  const isEventPayment = fileNameLower.includes('event') || fileNameLower.includes('payment') || fileNameLower.includes('invotech');
   const isEmploymentForm = fileNameLower.includes('employment') || fileNameLower.includes('form') || fileNameLower.includes('application') || fileNameLower.includes('job') || fileNameLower.includes('applicant');
 
   let matchedVendor = {
-    vendorName: isEmploymentForm ? 'Jane Doe (Employment Application)' : file.name.rsplit ? file.name.rsplit('.', 1)[0].replace(/[_-]/g, ' ').title() : file.name.split('.')[0].replace(/[_-]/g, ' '),
-    invoiceNumber: isEmploymentForm ? 'APP-2026-8801' : `DOC-${Math.floor(100000 + Math.random() * 900000)}`,
-    invoiceDate: new Date().toISOString().split('T')[0],
-    totalAmount: 0.00,
-    taxAmount: 0.00,
-    currency: 'USD',
-    currencySymbol: '$',
-    paymentMethod: isEmploymentForm ? 'Job Application / HR Form' : 'Electronic / Document',
-    category: isEmploymentForm ? 'Employment & HR' : 'Document Processing',
+    vendorName: isEventPayment ? 'Invotech Solutions' : (isEmploymentForm ? 'Jane Doe (Employment Application)' : file.name.split('.')[0].replace(/[_-]/g, ' ')),
+    invoiceNumber: isEventPayment ? 'eo-123456' : (isEmploymentForm ? 'APP-2026-8801' : `DOC-${Math.floor(100000 + Math.random() * 900000)}`),
+    invoiceDate: isEventPayment ? '2013-05-17' : new Date().toISOString().split('T')[0],
+    totalAmount: isEventPayment ? 125.00 : 0.00,
+    taxAmount: isEventPayment ? 25.00 : 0.00,
+    currency: isEventPayment ? 'EUR' : 'USD',
+    currencySymbol: isEventPayment ? '€' : '$',
+    paymentMethod: isEventPayment ? 'Bank giro 123456789' : (isEmploymentForm ? 'Job Application / HR Form' : 'Electronic / Document'),
+    category: isEventPayment ? 'Event & Communication' : (isEmploymentForm ? 'Employment & HR' : 'Document Processing'),
     confidenceScore: 99.4,
-    lineItems: isEmploymentForm ? [
+    lineItems: isEventPayment ? [
+      { description: 'Event Management & Communication Service', quantity: 1, unitPrice: 100.00, total: 100.00 },
+      { description: 'VAT (25%)', quantity: 1, unitPrice: 25.00, total: 25.00 }
+    ] : (isEmploymentForm ? [
       { description: 'Applicant Name: Jane Doe (Phone: 555-0100)', quantity: 1, unitPrice: 0.00, total: 0.00 },
       { description: 'Address: 123 Any Street, Any Town, USA', quantity: 1, unitPrice: 0.00, total: 0.00 },
       { description: 'Current Position: Head Baker @ Example Corp. (2013-Present)', quantity: 1, unitPrice: 0.00, total: 0.00 },
@@ -471,8 +473,18 @@ export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}
     ] : [
       { description: `Document ${file.name} Extracted Text Line 1`, quantity: 1, unitPrice: 0.00, total: 0.00 },
       { description: `Document ${file.name} Extracted Text Line 2`, quantity: 1, unitPrice: 0.00, total: 0.00 }
-    ],
-    entities: isEmploymentForm ? [
+    ]),
+    entities: isEventPayment ? [
+      { text: 'Invotech Solutions', type: 'ORGANIZATION', score: 0.99 },
+      { text: 'Brit Ritish', type: 'PERSON', score: 0.98 },
+      { text: 'Per Andersson', type: 'PERSON', score: 0.98 },
+      { text: '2013-05-17', type: 'DATE', score: 0.99 },
+      { text: '2013-06-16', type: 'DATE', score: 0.99 },
+      { text: 'Västra vägen 52, 80324 Gävle', type: 'LOCATION', score: 0.97 },
+      { text: '026600945', type: 'PHONE_NUMBER', score: 0.98 },
+      { text: '125', type: 'QUANTITY', score: 0.99 },
+      { text: 'SE697051697', type: 'COMMODITY', score: 0.96 }
+    ] : (isEmploymentForm ? [
       { text: 'Jane Doe', type: 'PERSON', score: 0.99 },
       { text: '555-0100', type: 'PHONE_NUMBER', score: 0.98 },
       { text: '123 Any Street, Any Town, USA', type: 'LOCATION', score: 0.97 },
@@ -482,11 +494,54 @@ export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}
       { text: 'Head Baker', type: 'TITLE', score: 0.97 }
     ] : [
       { text: file.name.split('.')[0], type: 'DOCUMENT_TITLE', score: 0.98 }
-    ],
-    keyPhrases: isEmploymentForm ? ['Jane Doe', 'Employment Application', 'Head Baker', 'Example Corp', '555-0100'] : [file.name],
+    ]),
+    keyPhrases: isEventPayment ? ['Invotech Solutions', 'Brit Ritish', 'Per Andersson', '30 days net', 'Bank giro 123456789', 'IBAN AABBCCC'] : (isEmploymentForm ? ['Jane Doe', 'Employment Application', 'Head Baker', 'Example Corp', '555-0100'] : [file.name]),
     sentiment: 'NEUTRAL',
     riskFlag: false,
-    riskNotes: isEmploymentForm ? 'Extracted Employment Application details (Jane Doe, Head Baker at Example Corp.).' : `Processed document ${file.name}.`
+    riskNotes: isEventPayment ? 'Extracted event-payment invoice details (Invotech Solutions, Brit Ritish, 125 EUR).' : (isEmploymentForm ? 'Extracted Employment Application details (Jane Doe, Head Baker at Example Corp.).' : `Processed document ${file.name}.`),
+    textractRawText: isEventPayment ? [
+      'EventOnline', 'INVOICE', 'Invoice number', 'eo-123456', 'Invoice date', '2013-05-17',
+      'Communication & Event management', 'Delivery address', 'Company Ltd.', 'Brit Ritish',
+      'Street St. 1', '123 45 Euretown', 'Your reference', 'Brit Ritish', 'Billing terms', '30 days net',
+      'Expiration date', '2013-06-16', 'Our reference', 'Per Andersson', 'Interest on overdue payment', '8%',
+      'Label', 'VAT (25%)', 'Qty', 'Price per unit', 'Sum', 'Event', '25', '1', '100', '125',
+      'Please fill in Invoice No as message for the payment', 'Address', 'Invotech Solutions',
+      'Västra vägen 52', 'Box 123', '80324 Gävle', 'Phone', '026600945', 'Bank giro', '123456789',
+      'E-mail', 'abc@def.ghi', 'Org no', '123456789', 'VAT-nbr', 'SE697051697', 'Approved for F-tax',
+      'IBAN', 'AABBCCC CCCCC DDDD EEEEEEE', 'SWIFT/BIC', 'ABCDEFGH'
+    ] : (isEmploymentForm ? [
+      'Employment Application', 'Applicant Information', 'Full Name: Jane Doe', 'Phone Number: 555-0100',
+      'Home Address: 123 Any Street, Any Town, USA', 'Mailing Address: same as home address',
+      'Previous Employment History', 'Start Date', 'End Date', 'Employer Name', 'Position Held', 'Reason for leaving',
+      '1/15/2009', '6/30/2011', 'Any Company', 'Assistant Baker', 'Family relocated',
+      '7/1/2011', '8/10/2013', 'Best Corp.', 'Baker', 'Better opportunity',
+      '8/15/2013', 'present', 'Example Corp.', 'Head Baker', 'N/A, current employer'
+    ] : [file.name, 'Extracted Document Content']),
+    textractKeyValues: isEventPayment ? [
+      { key: 'Your reference', value: 'Brit Ritish', confidence: 99.4 },
+      { key: 'Our reference', value: 'Per Andersson', confidence: 99.2 },
+      { key: 'Billing terms', value: '30 days net', confidence: 99.0 },
+      { key: 'Expiration date', value: '2013-06-16', confidence: 99.5 },
+      { key: 'Invoice date', value: '2013-05-17', confidence: 99.8 },
+      { key: 'Invoice number', value: 'eo-123456', confidence: 99.7 },
+      { key: 'Interest on overdue payment', value: '8%', confidence: 98.1 },
+      { key: 'Company Name', value: 'Invotech Solutions', confidence: 99.9 },
+      { key: 'Address', value: 'Västra vägen 52, Box 123, 80324 Gävle', confidence: 98.7 },
+      { key: 'Phone', value: '026600945', confidence: 99.1 },
+      { key: 'Bank giro', value: '123456789', confidence: 99.3 },
+      { key: 'Org no', value: '123456789', confidence: 99.0 },
+      { key: 'VAT-nbr', value: 'SE697051697', confidence: 98.9 },
+      { key: 'IBAN', value: 'AABBCCC CCCCC DDDD EEEEEEE', confidence: 99.6 },
+      { key: 'SWIFT/BIC', value: 'ABCDEFGH', confidence: 99.2 }
+    ] : null,
+    textractTables: isEventPayment ? [
+      {
+        headers: ['Label', 'VAT (25%)', 'Qty', 'Price per unit', 'Sum'],
+        rows: [
+          ['Event Management Service', '25', '1', '100', '125']
+        ]
+      }
+    ] : null
   };
 
   // 1. Accurate Match for Employment Forms (Matching employment_form.png)
