@@ -57,6 +57,9 @@ export default function AwsSettingsModal({ awsConfig, setAwsConfig, onClose, liv
   const handleSubmit = (e) => {
     e.preventDefault();
     setAwsConfig(formData);
+    if (formData.accessKeyId && setLiveMode) {
+      setLiveMode(true);
+    }
     setSavedSuccess(true);
     setTimeout(() => {
       setSavedSuccess(false);

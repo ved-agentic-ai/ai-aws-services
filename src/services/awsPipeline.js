@@ -391,10 +391,42 @@ async function executeLiveAwsPipeline(file, onProgressUpdate, rawEndpoint, awsCo
 }
 
 // Helper to simulate the 5-step AWS pipeline for uploaded files
-export async function simulateAwsPipeline(file, onProgressUpdate) {
+export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}) {
+  // Direct S3 Upload via AWS SDK if credentials exist (EVEN IN SIMULATOR / LAB MODE!)
+  let uploadedS3Bucket = 'payment-ai-stack-paymentdocumentbucket-yjxtkpxjyr63';
+  if (awsConfig.accessKeyId && awsConfig.secretAccessKey) {
+    try {
+      const { S3Client, PutObjectCommand, ListBucketsCommand } = await import('@aws-sdk/client-s3');
+      const s3Client = new S3Client({
+        region: awsConfig.region || 'us-east-1',
+        credentials: {
+          accessKeyId: awsConfig.accessKeyId,
+          secretAccessKey: awsConfig.secretAccessKey
+        }
+      });
+
+      try {
+        const bucketsRes = await s3Client.send(new ListBucketsCommand({}));
+        const foundBucket = bucketsRes.Buckets?.find(b => b.Name && (b.Name.includes('paymentdocumentbucket') || b.Name.includes('payment-ai-stack')));
+        if (foundBucket) uploadedS3Bucket = foundBucket.Name;
+      } catch (e) {}
+
+      const fileBuffer = new Uint8Array(await file.arrayBuffer());
+      await s3Client.send(new PutObjectCommand({
+        Bucket: uploadedS3Bucket,
+        Key: `uploads/${file.name}`,
+        Body: fileBuffer,
+        ContentType: file.type || 'image/png'
+      }));
+      console.log(`Direct S3 Upload Success in Simulator: s3://${uploadedS3Bucket}/uploads/${file.name}`);
+    } catch (s3Err) {
+      console.warn("Simulator S3 upload warning:", s3Err);
+    }
+  }
+
   const steps = [
     { stage: 'STAGING', label: '1. File Validation & Hashing', detail: `Hashing ${file.name} (${(file.size / 1024).toFixed(1)} KB)...`, progress: 20 },
-    { stage: 'S3_UPLOAD', label: '2. S3 Direct Upload', detail: `Uploading PUT object to s3://cloudquest-ml-bucket-0514/uploads/${file.name}...`, progress: 40 },
+    { stage: 'S3_UPLOAD', label: '2. S3 Direct Upload', detail: `Uploading PUT object to s3://${uploadedS3Bucket}/uploads/${file.name}...`, progress: 40 },
     { stage: 'S3_TRIGGER', label: '3. S3 Event Trigger', detail: 's3:ObjectCreated:Put payload received by AWS Lambda function...', progress: 60 },
     { stage: 'TEXTRACT', label: '4. Textract Expense Analysis', detail: 'Executing textract.analyze_expense() OCR on raw document...', progress: 80 },
     { stage: 'COMPREHEND', label: '5. Comprehend NLP Insights', detail: 'Executing comprehend.detect_entities() & sentiment scoring...', progress: 100 }
