@@ -228,7 +228,11 @@ export const INITIAL_DOCUMENTS = [
 
 // Primary entry point for processing uploaded documents (Live AWS or Simulator)
 export async function executeAwsPipeline(file, onProgressUpdate, awsConfig = {}, liveMode = false) {
-  const endpoint = awsConfig.lambdaFunctionUrl || awsConfig.apiGatewayUrl;
+  // Filter out placeholder URLs
+  const validApiUrl = (awsConfig.apiGatewayUrl && !awsConfig.apiGatewayUrl.includes('xyz123')) ? awsConfig.apiGatewayUrl : '';
+  const validLambdaUrl = (awsConfig.lambdaFunctionUrl && !awsConfig.lambdaFunctionUrl.includes('xyz123')) ? awsConfig.lambdaFunctionUrl : '';
+
+  const endpoint = validApiUrl || validLambdaUrl;
 
   if (liveMode && endpoint) {
     return await executeLiveAwsPipeline(file, onProgressUpdate, endpoint, awsConfig);
