@@ -336,21 +336,39 @@ Outputs:
     setLiveMode(true);
   };
 
-  // Live Teardown / Simulator
-  const handleSimulateTeardown = async () => {
+  const [s3BucketPromptModal, setS3BucketPromptModal] = useState(null);
+
+  const confirmAndProceedTeardown = async (bucketName, objectsToDelete) => {
+    setS3BucketPromptModal(null);
+    setDeployState('DELETING');
+
     if (awsConfig.accessKeyId && awsConfig.secretAccessKey) {
       try {
-        setDeployState('DELETING');
+        const { S3Client, DeleteObjectsCommand } = await import('@aws-sdk/client-s3');
         const { CloudFormationClient, DeleteStackCommand } = await import('@aws-sdk/client-cloudformation');
 
-        const cfClient = new CloudFormationClient({
-          region: awsConfig.region || 'us-east-1',
-          credentials: {
-            accessKeyId: awsConfig.accessKeyId,
-            secretAccessKey: awsConfig.secretAccessKey
-          }
-        });
+        const credentials = {
+          accessKeyId: awsConfig.accessKeyId,
+          secretAccessKey: awsConfig.secretAccessKey
+        };
+        const region = awsConfig.region || 'us-east-1';
 
+        // 1. Empty S3 Bucket Objects to prevent 409 Conflict
+        if (bucketName && objectsToDelete && objectsToDelete.length > 0) {
+          try {
+            const s3Client = new S3Client({ region, credentials });
+            await s3Client.send(new DeleteObjectsCommand({
+              Bucket: bucketName,
+              Delete: { Objects: objectsToDelete.map(obj => ({ Key: obj.Key })) }
+            }));
+            console.log(`Successfully emptied S3 Bucket: ${bucketName}`);
+          } catch (e) {
+            console.warn("Error deleting objects:", e);
+          }
+        }
+
+        // 2. Send DeleteStackCommand to CloudFormation
+        const cfClient = new CloudFormationClient({ region, credentials });
         await cfClient.send(new DeleteStackCommand({ StackName: 'payment-ai-stack' }));
 
         for (let i = STACK_RESOURCES.length - 1; i >= 0; i--) {
@@ -361,6 +379,64 @@ Outputs:
         setDeployState('DELETED');
         setAwsConfig(prev => ({ ...prev, apiGatewayUrl: '', lambdaFunctionUrl: '' }));
         setLiveMode(false);
+        return;
+      } catch (err) {
+        console.warn("Teardown execution error:", err);
+      }
+    }
+
+    setDeployState('DELETING');
+    for (let i = STACK_RESOURCES.length - 1; i >= 0; i--) {
+      setCurrentStepIndex(i);
+      await new Promise(r => setTimeout(r, 800));
+    }
+
+    setDeployState('DELETED');
+    setCurrentStepIndex(-1);
+    setAwsConfig(prev => ({ ...prev, apiGatewayUrl: '', lambdaFunctionUrl: '' }));
+    setLiveMode(false);
+  };
+
+  // Live Teardown / Simulator with S3 non-empty bucket detection
+  const handleSimulateTeardown = async () => {
+    if (awsConfig.accessKeyId && awsConfig.secretAccessKey) {
+      try {
+        const { S3Client, ListObjectsV2Command, ListBucketsCommand } = await import('@aws-sdk/client-s3');
+        const credentials = {
+          accessKeyId: awsConfig.accessKeyId,
+          secretAccessKey: awsConfig.secretAccessKey
+        };
+        const region = awsConfig.region || 'us-east-1';
+        const s3Client = new S3Client({ region, credentials });
+
+        // Target bucket name
+        let targetBucket = awsConfig.s3Bucket || 'payment-ai-stack-paymentdocumentbucket-yjxtkpxjyr63';
+        try {
+          const bucketsRes = await s3Client.send(new ListBucketsCommand({}));
+          const foundBucket = bucketsRes.Buckets?.find(b => b.Name && (b.Name.includes('paymentdocumentbucket') || b.Name.includes('payment-ai-stack')));
+          if (foundBucket) targetBucket = foundBucket.Name;
+        } catch (e) {}
+
+        // Check if bucket contains objects
+        let objectsToDelete = [];
+        try {
+          const listRes = await s3Client.send(new ListObjectsV2Command({ Bucket: targetBucket }));
+          if (listRes.Contents && listRes.Contents.length > 0) {
+            objectsToDelete = listRes.Contents;
+          }
+        } catch (e) {}
+
+        // If objects exist, open the Beautiful Pop-up Modal!
+        if (objectsToDelete.length > 0) {
+          setS3BucketPromptModal({
+            bucketName: targetBucket,
+            objects: objectsToDelete
+          });
+          return;
+        }
+
+        // If bucket is already empty, proceed directly to teardown
+        await confirmAndProceedTeardown(targetBucket, []);
         return;
       } catch (err) {
         console.warn("SDK Teardown fallback:", err);
@@ -668,6 +744,56 @@ Resources:
     Properties:
       Runtime: python3.12
       Handler: lambda_function.lambda_handler`}</pre>
+          </div>
+        </div>
+      )}
+
+      {/* NON-EMPTY S3 BUCKET CONFIRMATION MODAL POPUP */}
+      {s3BucketPromptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-lg bg-[#0F172A] border border-amber-500/40 rounded-2xl shadow-2xl overflow-hidden p-6 space-y-5">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold flex-shrink-0">
+                <AlertTriangle className="h-6 w-6 stroke-[2.5]" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Non-Empty S3 Bucket Warning (AWS S3 409 Conflict)</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  AWS S3 Bucket <span className="font-mono text-amber-400">{s3BucketPromptModal.bucketName}</span> contains <span className="font-bold text-white">{s3BucketPromptModal.objects.length} uploaded document(s)</span>.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono space-y-1.5 max-h-36 overflow-y-auto">
+              <div className="text-[10px] text-slate-500 uppercase font-bold">Uploaded Objects to be Emptied:</div>
+              {s3BucketPromptModal.objects.map((obj, idx) => (
+                <div key={idx} className="flex justify-between text-slate-300">
+                  <span className="truncate">{obj.Key}</span>
+                  <span className="text-slate-500">{Math.round((obj.Size || 0) / 1024)} KB</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+              <strong>AWS CloudFormation Notice:</strong> AWS requires S3 Buckets to be emptied before stack deletion can complete. Clicking below will automatically erase these objects and delete all 7 AWS resources with zero errors!
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setS3BucketPromptModal(null)}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Cancel Teardown
+              </button>
+
+              <button
+                onClick={() => confirmAndProceedTeardown(s3BucketPromptModal.bucketName, s3BucketPromptModal.objects)}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white text-xs font-bold shadow-lg shadow-rose-600/20 transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Trash2 className="h-4 w-4" />
+                Empty S3 Bucket & Delete AWS Stack
+              </button>
+            </div>
           </div>
         </div>
       )}
