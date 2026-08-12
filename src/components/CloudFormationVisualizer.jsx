@@ -117,6 +117,7 @@ Resources:
   HttpApiGateway:
     Type: AWS::ApiGatewayV2::Api
     Properties:
+      Name: PaymentDocApi
       ProtocolType: HTTP
       CorsConfiguration: { AllowOrigins: ['*'], AllowMethods: [POST, OPTIONS] }
   HttpApiIntegration:

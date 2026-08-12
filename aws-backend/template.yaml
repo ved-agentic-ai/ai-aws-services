@@ -263,7 +263,7 @@ Resources:
   HttpApiGateway:
     Type: AWS::ApiGatewayV2::Api
     Properties:
-      Name: !Sub 'PaymentDocApi-${EnvironmentName}'
+      Name: PaymentDocApi
       ProtocolType: HTTP
       CorsConfiguration:
         AllowOrigins: ['*']
@@ -302,7 +302,7 @@ Resources:
       FunctionName: !Ref PaymentProcessorFunction
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApiGateway}/*'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApiGateway}/*'
 
 Outputs:
   ApiGatewayUrl:
