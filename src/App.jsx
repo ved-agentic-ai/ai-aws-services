@@ -6,6 +6,7 @@ import DocumentExplorer from './components/DocumentExplorer';
 import DocumentDetailModal from './components/DocumentDetailModal';
 import AwsSettingsModal from './components/AwsSettingsModal';
 import CloudFormationVisualizer from './components/CloudFormationVisualizer';
+import AwsBackendCodeGuide from './components/AwsBackendCodeGuide';
 import { INITIAL_DOCUMENTS } from './services/awsPipeline';
 import { 
   LayoutDashboard, Upload, Database, Code, CheckCircle2, ShieldCheck, Terminal, ExternalLink, Sparkles, FileText, ArrowRight, Cloud 
@@ -249,68 +250,7 @@ export default function App() {
 
         {/* TAB 5: AWS BACKEND & LAMBDA CODE */}
         {activeTab === 'AWS_GUIDE' && (
-          <div className="space-y-6">
-            <div className="p-6 rounded-2xl glass-panel space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Code className="h-5 w-5 text-amber-500" />
-                    AWS Cloud Quest Lambda Code & Setup Guide
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Copy this code directly into your AWS Cloud Quest Lambda function standard Python console.
-                  </p>
-                </div>
-                <span className="bg-slate-800 text-amber-400 text-xs px-3 py-1 rounded-lg border border-slate-700 font-mono">
-                  Python 3.12 (Boto3)
-                </span>
-              </div>
-
-              {/* Code Snippet Container */}
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs overflow-x-auto">
-                <pre className="text-slate-300">
-{`import json
-import boto3
-
-s3_client = boto3.client('s3')
-textract_client = boto3.client('textract')
-comprehend_client = boto3.client('comprehend')
-
-def lambda_handler(event, context):
-    """
-    AWS Cloud Quest Machine Learning Lambda Handler
-    Triggered by S3 ObjectCreated event. Executes Textract Expense OCR & Comprehend NLP.
-    """
-    for record in event.get('Records', []):
-        bucket_name = record['s3']['bucket']['name']
-        object_key = record['s3']['object']['key']
-        
-        # 1. Execute Textract Analyze Expense
-        expense_response = textract_client.analyze_expense(
-            Document={'S3Object': {'Bucket': bucket_name, 'Name': object_key}}
-        )
-        
-        # 2. Extract Document Raw Text for Comprehend
-        doc_text = "Payment Document extracted from " + object_key
-        
-        # 3. Execute Amazon Comprehend Entity Detection & Key Phrases
-        entities_res = comprehend_client.detect_entities(Text=doc_text[:4000], LanguageCode='en')
-        phrases_res = comprehend_client.detect_key_phrases(Text=doc_text[:4000], LanguageCode='en')
-        
-        return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'bucket': bucket_name,
-                'key': object_key,
-                'status': 'PROCESSED',
-                'entitiesCount': len(entities_res.get('Entities', []))
-            })
-        }`}
-                </pre>
-              </div>
-
-            </div>
-          </div>
+          <AwsBackendCodeGuide />
         )}
 
       </main>
