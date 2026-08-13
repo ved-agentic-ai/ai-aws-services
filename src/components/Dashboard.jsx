@@ -58,7 +58,7 @@ export default function Dashboard({ documents, onSelectDocument }) {
     <div className="space-y-6">
       
       {/* 5 KPI Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
         
         {/* Metric 1: Total Spending */}
         <div className="p-5 rounded-2xl glass-panel relative overflow-hidden group hover:border-amber-500/30 transition-all">
@@ -273,15 +273,21 @@ export default function Dashboard({ documents, onSelectDocument }) {
                 onClick={() => onSelectDocument(doc)}
                 className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 cursor-pointer transition-all space-y-1.5"
               >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-200 truncate max-w-[160px]">{doc.vendorName}</span>
-                  <span className="text-amber-400 font-bold">${doc.totalAmount.toFixed(2)}</span>
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="font-semibold text-slate-200 truncate flex-1" title={doc.vendorName}>
+                    {doc.vendorName}
+                  </span>
+                  <span className="text-amber-400 font-bold flex-shrink-0 font-mono">
+                    {doc.currencySymbol || '$'}{doc.totalAmount.toFixed(2)}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                  <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">
+                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                  <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono text-[10px]">
                     {doc.comprehendInsights?.sentiment || 'NEUTRAL'}
                   </span>
-                  <span>{doc.lineItems?.length || 0} line items parsed</span>
+                  <span className="text-emerald-400 font-mono text-[10px] font-semibold">
+                    {doc.ucRiskEngine?.riskClassLabel || 'Riskklass 5 (Guld)'}
+                  </span>
                 </div>
                 {doc.comprehendInsights?.riskFlag && (
                   <p className="text-[11px] text-rose-400 font-medium bg-rose-500/10 p-1.5 rounded border border-rose-500/20">

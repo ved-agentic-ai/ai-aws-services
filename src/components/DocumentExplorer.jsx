@@ -128,11 +128,11 @@ export default function DocumentExplorer({ documents, onSelectDocument }) {
                     {/* File Info */}
                     <td className="py-3.5 px-4 font-medium text-slate-200">
                       <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+                        <div className="h-8 w-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform flex-shrink-0">
                           <FileText className="h-4 w-4" />
                         </div>
-                        <div>
-                          <div className="font-semibold text-slate-100 group-hover:text-amber-400 transition-colors">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-100 group-hover:text-amber-400 transition-colors truncate max-w-[180px]" title={doc.fileName}>
                             {doc.fileName}
                           </div>
                           <div className="text-[10px] text-slate-400 font-mono">{doc.fileSize}</div>
@@ -142,35 +142,35 @@ export default function DocumentExplorer({ documents, onSelectDocument }) {
 
                     {/* Vendor & Invoice */}
                     <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-100">{doc.vendorName}</div>
+                      <div className="font-bold text-slate-100 truncate max-w-[200px]" title={doc.vendorName}>{doc.vendorName}</div>
                       <div className="text-[10px] text-slate-400 font-mono">{doc.invoiceNumber}</div>
                     </td>
 
                     {/* Category */}
                     <td className="py-3.5 px-4">
-                      <span className="bg-slate-800 text-slate-300 px-2.5 py-1 rounded-md border border-slate-700 font-medium text-[11px]">
+                      <span className="bg-slate-800 text-slate-300 px-2.5 py-1 rounded-md border border-slate-700 font-medium text-[11px] whitespace-nowrap">
                         {doc.category}
                       </span>
                     </td>
 
                     {/* Invoice Date */}
-                    <td className="py-3.5 px-4 font-mono text-slate-300">
+                    <td className="py-3.5 px-4 font-mono text-slate-300 whitespace-nowrap">
                       {doc.invoiceDate}
                     </td>
 
                     {/* Total Amount */}
-                    <td className="py-3.5 px-4">
-                      <span className="font-extrabold text-amber-400 text-sm">
-                        ${doc.totalAmount.toFixed(2)}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <span className="font-extrabold text-amber-400 text-sm font-mono">
+                        {doc.currencySymbol || '$'}{doc.totalAmount.toFixed(2)}
                       </span>
                       {doc.taxAmount > 0 && (
-                        <div className="text-[10px] text-slate-400">Tax: ${doc.taxAmount.toFixed(2)}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">Tax: {doc.currencySymbol || '$'}{doc.taxAmount.toFixed(2)}</div>
                       )}
                     </td>
 
                     {/* Payment Method */}
                     <td className="py-3.5 px-4 text-slate-300 text-[11px]">
-                      {doc.paymentMethod}
+                      <span className="truncate max-w-[160px] block" title={doc.paymentMethod}>{doc.paymentMethod}</span>
                     </td>
 
                     {/* Confidence Score */}

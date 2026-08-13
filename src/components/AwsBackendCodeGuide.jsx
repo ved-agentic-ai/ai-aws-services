@@ -4,8 +4,8 @@ import {
 } from 'lucide-react';
 
 export default function AwsBackendCodeGuide() {
-  const [isCloudFormationOpen, setIsCloudFormationOpen] = useState(true);
-  const [isLambdaOpen, setIsLambdaOpen] = useState(true);
+  const [isCloudFormationOpen, setIsCloudFormationOpen] = useState(false); // CLOSED BY DEFAULT
+  const [isLambdaOpen, setIsLambdaOpen] = useState(false); // CLOSED BY DEFAULT
   const [copiedType, setCopiedType] = useState(null);
 
   const copyToClipboard = (text, type) => {
