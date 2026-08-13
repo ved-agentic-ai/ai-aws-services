@@ -542,7 +542,7 @@ export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}
       bankgiroValid: true,
       priceVariance: '0.0%',
       paymentTerms: '30 Dagar Netto',
-      bedrockGenAiAnalysis: 'Amazon Bedrock (Claude 3.5 Sonnet): Verified ZigBank internal payment instruction. Vendor Mark & Spencer registered with valid F-skatt status. Low insolvency and fraud probability. Risk Score 12/100 (UC Riskklass 5 Guld).',
+      bedrockGenAiAnalysis: 'Amazon Bedrock (Claude 3.5 Sonnet): Verified ZigBank internal payment instruction. Vendor Mark & Spencer registered with valid F-skatt status. Low insolvency and fraud probability. Risk Score 12/100 (Riskklass 5 Guld).',
       rekognitionAudit: { stampVerified: true, signatureDetected: true, confidence: 99.8 }
     } : (isEventPayment ? {
       score: 28,
@@ -555,7 +555,7 @@ export async function simulateAwsPipeline(file, onProgressUpdate, awsConfig = {}
       bankgiroValid: true,
       priceVariance: '+2.5%',
       paymentTerms: '30 Dagar Netto',
-      bedrockGenAiAnalysis: 'Amazon Bedrock (Claude 3.5 Sonnet): Invotech Solutions event invoice verified. VAT number SE697051697 valid. Risk Score 28/100 (UC Riskklass 4 Grön).',
+      bedrockGenAiAnalysis: 'Amazon Bedrock (Claude 3.5 Sonnet): Invotech Solutions event invoice verified. VAT number SE697051697 valid. Risk Score 28/100 (Riskklass 4 Grön).',
       rekognitionAudit: { stampVerified: true, signatureDetected: true, confidence: 99.2 }
     } : (isEmploymentForm ? {
       score: 15,

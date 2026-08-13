@@ -115,13 +115,13 @@ def build_presentation():
     p.font.color.rgb = AMBER
 
     p = tf1.add_paragraph()
-    p.text = "PayComprehend AI: Nordic UC Risk Intelligence"
+    p.text = "PayComprehend AI: Nordic Financial Risk Intelligence"
     p.font.size = Pt(32)
     p.font.bold = True
     p.font.color.rgb = WHITE
 
     p = tf1.add_paragraph()
-    p.text = "Serverless Intelligent Document Processing (IDP) • Amazon Textract + Comprehend + Bedrock GenAI + Nordic UC Engine"
+    p.text = "Serverless Intelligent Document Processing (IDP) • Amazon Textract + Comprehend + Bedrock GenAI + Nordic Risk Engine"
     p.font.size = Pt(13)
     p.font.color.rgb = GRAY
 
@@ -135,7 +135,7 @@ def build_presentation():
     tf_c1.word_wrap = True
     items = [
         ("⚡ 99.1% Operational Cost Reduction:", " Manual invoice entry ($18.00/doc) reduced to $0.015/doc via AWS Serverless OCR & NLP."),
-        ("🇸🇪 Nordic UC / Enento Riskklass Engine:", " Automatic calculation of Riskklass 1-5, Swedish Org.nr validation, F-skatt status & Bankgiro audit."),
+        ("🇸🇪 Nordic Financial Riskklass Engine:", " Automatic calculation of Riskklass 1-5, Swedish Org.nr validation, F-skatt status & Bankgiro audit."),
         ("🧠 Amazon Bedrock (Claude 3.5 Sonnet):", " Deep financial mismatch explanations & insolvency probability scoring."),
         ("🛡️ Heavy AWS Services Safeguard:", " Itemized cost confirmation modal preventing unexpected AWS cloud spend."),
         ("☁️ CloudFormation 1-Click Teardown:", " 100% stack cleanup guarantee including S3 buckets, Lambda & CloudWatch Log Groups.")
@@ -212,10 +212,10 @@ def build_presentation():
     # SLIDE 5: Document Explorer
     add_screen_slide(
         "Screen 04 - Document Explorer Module",
-        "Nordic UC Riskklass 1-5 Badges & Table Filtering",
+        "Nordic Financial Riskklass 1-5 Badges & Table Filtering",
         "03_explorer_screen.png",
         [
-            ("Risk Klass Algorithm", "Nordic UC Swedish Credit Risk Matrix (0-100)"),
+            ("Risk Klass Algorithm", "Nordic Swedish Credit Risk Matrix (0-100)"),
             ("Org.nr Validator", "Modulus-10 Luhn checksum check"),
             ("Tax Compliance", "Godkänd för F-skatt status check"),
             ("Payment Method Audit", "Bankgiro / Plusgiro matching")
@@ -223,7 +223,7 @@ def build_presentation():
         [
             "Interactive search across vendor, file name & invoice numbers.",
             "Filter by category, processing status & spend sorting.",
-            "Displays Nordic UC Riskklass badges (Guld 5 to Röd 1).",
+            "Displays Nordic Riskklass badges (Guld 5 to Röd 1).",
             "Exact currency formatting (£, €, $) per extracted document."
         ]
     )

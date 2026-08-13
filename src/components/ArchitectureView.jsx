@@ -84,14 +84,14 @@ export default function ArchitectureView({ onOpenPaidServicesModal, enabledServi
     },
     {
       id: 'uc_engine',
-      name: 'Nordic UC / Enento Credit Risk Model',
+      name: 'Nordic Business Credit Risk Engine',
       category: 'AI_SERVICES',
       serviceIcon: ShieldCheck,
       color: 'text-emerald-400',
       bgColor: 'bg-emerald-500/10',
       borderColor: 'border-emerald-500/30',
-      arn: 'aws:sagemaker:uc-risk-model-v2',
-      description: 'Calculates Swedish UC Riskklass (1 to 5) & 0-100 Risk Score using Org.nr checksum, F-skatt status, & Bankgiro verification.',
+      arn: 'aws:sagemaker:nordic-risk-model-v2',
+      description: 'Calculates Nordic Risk Class (1 to 5) & 0-100 Risk Score using organization registration checksums, tax status, & bank verification.',
       metrics: '5-Parameter Nordic Risk Matrix'
     },
     {
@@ -233,7 +233,7 @@ export default function ArchitectureView({ onOpenPaidServicesModal, enabledServi
             99.6% <span className="text-xs font-normal text-slate-400">confidence</span>
           </div>
           <div className="p-2.5 rounded-lg bg-sky-500/10 border border-sky-500/20 text-xs text-sky-400">
-            UC Riskklass 1-5 precision with F-skatt & Bankgiro verification.
+            Nordic Risk Klass 1-5 precision with F-skatt & Bankgiro verification.
           </div>
         </div>
 

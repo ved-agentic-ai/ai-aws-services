@@ -79,7 +79,7 @@ export default function StandbyHeroView({ onSelectTab, onOpenPaidServicesModal }
             <h3 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors flex items-center gap-1">
               Document Explorer <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
             </h3>
-            <p className="text-xs text-slate-400 mt-1">Browse documents with Swedish UC Riskklass 1-5 credit scores.</p>
+            <p className="text-xs text-slate-400 mt-1">Browse documents with Swedish Riskklass 1-5 credit scores.</p>
           </div>
         </div>
 
@@ -110,7 +110,7 @@ export default function StandbyHeroView({ onSelectTab, onOpenPaidServicesModal }
         <div className="flex items-center gap-4">
           <span>Latency: &lt; 1.8s</span>
           <span>•</span>
-          <span>UC Risk Engine: Active</span>
+          <span>Nordic Risk Engine: Active</span>
         </div>
       </div>
 
