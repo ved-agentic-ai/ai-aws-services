@@ -131,7 +131,7 @@ export default function ArchitectureView({ onOpenPaidServicesModal, enabledServi
             System Architecture & Business Value Analysis
           </h2>
           <p className="text-xs text-slate-400 mt-1 max-w-3xl">
-            Fully event-driven serverless AI pipeline leveraging Amazon S3, AWS Lambda, Textract OCR, Amazon Comprehend, Bedrock GenAI, & Nordic UC Risk Engine.
+            Fully event-driven serverless AI pipeline leveraging Amazon S3, AWS Lambda, Textract OCR, Amazon Comprehend, Bedrock GenAI, & Nordic Credit Risk Engine.
           </p>
         </div>
 
