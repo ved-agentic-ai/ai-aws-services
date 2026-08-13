@@ -7,18 +7,20 @@ import {
 } from 'recharts';
 
 export default function Dashboard({ documents, onSelectDocument }) {
+  const safeDocs = documents || [];
+
   // Aggregate Metrics
-  const totalSpent = documents.reduce((sum, doc) => sum + (doc.totalAmount || 0), 0);
-  const totalCount = documents.length;
+  const totalSpent = safeDocs.reduce((sum, doc) => sum + (Number(doc.totalAmount) || 0), 0);
+  const totalCount = safeDocs.length;
   const avgConfidence = (
-    documents.reduce((sum, doc) => sum + (doc.confidenceScore || 90), 0) / (totalCount || 1)
+    safeDocs.reduce((sum, doc) => sum + (Number(doc.confidenceScore) || 90), 0) / (totalCount || 1)
   ).toFixed(1);
 
   // Vendor Aggregation
   const vendorMap = {};
-  documents.forEach(doc => {
+  safeDocs.forEach(doc => {
     const v = doc.vendorName || 'Unknown Vendor';
-    vendorMap[v] = (vendorMap[v] || 0) + doc.totalAmount;
+    vendorMap[v] = (vendorMap[v] || 0) + (Number(doc.totalAmount) || 0);
   });
   
   const topVendor = Object.keys(vendorMap).reduce((a, b) => vendorMap[a] > vendorMap[b] ? a : b, 'N/A');
@@ -26,14 +28,14 @@ export default function Dashboard({ documents, onSelectDocument }) {
 
   // Category Distribution for Chart
   const categoryMap = {};
-  documents.forEach(doc => {
+  safeDocs.forEach(doc => {
     const cat = doc.category || 'General';
-    categoryMap[cat] = (categoryMap[cat] || 0) + doc.totalAmount;
+    categoryMap[cat] = (categoryMap[cat] || 0) + (Number(doc.totalAmount) || 0);
   });
 
   const categoryChartData = Object.keys(categoryMap).map(key => ({
     name: key,
-    value: Number(categoryMap[key].toFixed(2))
+    value: Number((categoryMap[key] || 0).toFixed(2))
   }));
 
   const COLORS = ['#FF9900', '#38BDF8', '#10B981', '#F43F5E', '#A855F7', '#F59E0B'];
@@ -41,18 +43,18 @@ export default function Dashboard({ documents, onSelectDocument }) {
   // Vendor Bar Chart Data
   const vendorChartData = Object.keys(vendorMap).map(key => ({
     name: key.length > 18 ? key.substring(0, 18) + '...' : key,
-    amount: Number(vendorMap[key].toFixed(2))
+    amount: Number((vendorMap[key] || 0).toFixed(2))
   })).sort((a, b) => b.amount - a.amount).slice(0, 5);
 
   // Timeline Area Chart Data
-  const timelineData = documents.map(doc => ({
-    date: doc.invoiceDate || doc.uploadDate.split('T')[0],
-    amount: doc.totalAmount,
-    vendor: doc.vendorName
+  const timelineData = safeDocs.map(doc => ({
+    date: doc.invoiceDate || (doc.uploadDate ? doc.uploadDate.split('T')[0] : '2026-08-12'),
+    amount: Number(doc.totalAmount) || 0,
+    vendor: doc.vendorName || 'Unknown Vendor'
   })).sort((a, b) => new Date(a.date) - new Date(b.date));
 
   // Risk Flagged Documents
-  const riskDocs = documents.filter(doc => doc.comprehendInsights?.riskFlag || doc.status === 'NEEDS_REVIEW');
+  const riskDocs = safeDocs.filter(doc => doc.comprehendInsights?.riskFlag || doc.status === 'NEEDS_REVIEW');
 
   return (
     <div className="space-y-6">

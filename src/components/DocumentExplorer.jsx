@@ -8,14 +8,15 @@ export default function DocumentExplorer({ documents, onSelectDocument }) {
   const [sortBy, setSortBy] = useState('date-desc');
 
   // Categories list
-  const categories = ['ALL', ...new Set(documents.map(d => d.category))];
+  const categories = ['ALL', ...new Set((documents || []).map(d => d.category || 'General'))];
 
   // Filtered and Sorted Documents
-  const filteredDocs = documents.filter(doc => {
+  const filteredDocs = (documents || []).filter(doc => {
+    const sTerm = (searchTerm || '').toLowerCase();
     const matchesSearch = 
-      doc.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      (doc.vendorName || '').toLowerCase().includes(sTerm) ||
+      (doc.fileName || '').toLowerCase().includes(sTerm) ||
+      (doc.invoiceNumber || '').toLowerCase().includes(sTerm);
 
     const matchesCategory = categoryFilter === 'ALL' || doc.category === categoryFilter;
     const matchesStatus = statusFilter === 'ALL' || doc.status === statusFilter;
