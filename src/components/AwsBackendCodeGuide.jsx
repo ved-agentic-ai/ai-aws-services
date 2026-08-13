@@ -364,7 +364,9 @@ def lambda_handler(event, context):
 
       {/* PANEL 1: AWS CLOUDFORMATION TEMPLATE (COLLAPSIBLE) */}
       <div className="rounded-2xl glass-panel border border-slate-800/80 overflow-hidden transition-all">
-        <button
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => setIsCloudFormationOpen(!isCloudFormationOpen)}
           className="w-full p-5 bg-slate-900/60 hover:bg-slate-900/90 flex items-center justify-between transition-colors cursor-pointer text-left"
         >
@@ -403,7 +405,7 @@ def lambda_handler(event, context):
               {isCloudFormationOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
             </div>
           </div>
-        </button>
+        </div>
 
         {isCloudFormationOpen && (
           <div className="p-5 border-t border-slate-800 space-y-4 animate-fadeIn">
@@ -445,7 +447,9 @@ def lambda_handler(event, context):
 
       {/* PANEL 2: AWS LAMBDA CODE (COLLAPSIBLE) */}
       <div className="rounded-2xl glass-panel border border-slate-800/80 overflow-hidden transition-all">
-        <button
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => setIsLambdaOpen(!isLambdaOpen)}
           className="w-full p-5 bg-slate-900/60 hover:bg-slate-900/90 flex items-center justify-between transition-colors cursor-pointer text-left"
         >
@@ -484,7 +488,7 @@ def lambda_handler(event, context):
               {isLambdaOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
             </div>
           </div>
-        </button>
+        </div>
 
         {isLambdaOpen && (
           <div className="p-5 border-t border-slate-800 space-y-4 animate-fadeIn">
