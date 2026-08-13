@@ -161,10 +161,10 @@ export default function DocumentExplorer({ documents, onSelectDocument }) {
                     {/* Total Amount */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <span className="font-extrabold text-amber-400 text-sm font-mono">
-                        {doc.currencySymbol || '$'}{doc.totalAmount.toFixed(2)}
+                        {doc.currencySymbol || '$'}{typeof doc.totalAmount === 'number' ? doc.totalAmount.toFixed(2) : Number(doc.totalAmount || 0).toFixed(2)}
                       </span>
-                      {doc.taxAmount > 0 && (
-                        <div className="text-[10px] text-slate-400 font-mono">Tax: {doc.currencySymbol || '$'}{doc.taxAmount.toFixed(2)}</div>
+                      {Number(doc.taxAmount || 0) > 0 && (
+                        <div className="text-[10px] text-slate-400 font-mono">Tax: {doc.currencySymbol || '$'}{typeof doc.taxAmount === 'number' ? doc.taxAmount.toFixed(2) : Number(doc.taxAmount || 0).toFixed(2)}</div>
                       )}
                     </td>
 

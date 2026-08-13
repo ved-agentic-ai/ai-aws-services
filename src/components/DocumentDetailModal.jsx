@@ -22,25 +22,31 @@ export default function DocumentDetailModal({ document, onClose }) {
 
   if (!document) return null;
 
+  const safeNum = (val) => {
+    if (val === undefined || val === null) return '0.00';
+    const num = Number(val);
+    return isNaN(num) ? '0.00' : num.toFixed(2);
+  };
+
   const comprehend = document.comprehendInsights || {};
   const textract = document.textractInsights || {};
 
   // Extract raw text blocks matching AWS Textract Console (Screenshot 2)
   const rawTextBlocks = document.textractRawText || [
-    document.vendorName, 'INVOICE', document.invoiceNumber, document.invoiceDate,
-    'Total Amount', `${document.currencySymbol || '$'}${document.totalAmount.toFixed(2)}`,
-    'Tax', `${document.currencySymbol || '$'}${document.taxAmount.toFixed(2)}`,
-    document.paymentMethod, 'Category', document.category
+    document.vendorName || 'Unknown Vendor', 'INVOICE', document.invoiceNumber || 'INV-001', document.invoiceDate || '2026-08-01',
+    'Total Amount', `${document.currencySymbol || '$'}${safeNum(document.totalAmount)}`,
+    'Tax', `${document.currencySymbol || '$'}${safeNum(document.taxAmount)}`,
+    document.paymentMethod || 'Credit Card', 'Category', document.category || 'General'
   ];
 
   // Key-value pairs matching AWS Forms Output
   const keyValues = document.textractKeyValues || textract.keyValues || [
-    { key: 'VENDOR_NAME', value: document.vendorName, confidence: 99.4 },
-    { key: 'INVOICE_NUMBER', value: document.invoiceNumber, confidence: 99.1 },
-    { key: 'INVOICE_DATE', value: document.invoiceDate, confidence: 99.0 },
-    { key: 'TOTAL_AMOUNT', value: `${document.currencySymbol || '$'}${document.totalAmount.toFixed(2)}`, confidence: 99.6 },
-    { key: 'TAX', value: `${document.currencySymbol || '$'}${document.taxAmount.toFixed(2)}`, confidence: 98.5 },
-    { key: 'PAYMENT_METHOD', value: document.paymentMethod, confidence: 98.2 }
+    { key: 'VENDOR_NAME', value: document.vendorName || 'N/A', confidence: 99.4 },
+    { key: 'INVOICE_NUMBER', value: document.invoiceNumber || 'N/A', confidence: 99.1 },
+    { key: 'INVOICE_DATE', value: document.invoiceDate || 'N/A', confidence: 99.0 },
+    { key: 'TOTAL_AMOUNT', value: `${document.currencySymbol || '$'}${safeNum(document.totalAmount)}`, confidence: 99.6 },
+    { key: 'TAX', value: `${document.currencySymbol || '$'}${safeNum(document.taxAmount)}`, confidence: 98.5 },
+    { key: 'PAYMENT_METHOD', value: document.paymentMethod || 'N/A', confidence: 98.2 }
   ];
 
   // Tables output matching AWS Textract Tables Output
@@ -48,10 +54,10 @@ export default function DocumentDetailModal({ document, onClose }) {
     {
       headers: ['Description', 'Qty', 'Unit Price', 'Total'],
       rows: (document.lineItems || []).map(item => [
-        item.description,
+        item.description || 'Line item',
         item.quantity || 1,
-        `${document.currencySymbol || '$'}${Number(item.unitPrice || 0).toFixed(2)}`,
-        `${document.currencySymbol || '$'}${Number(item.total || 0).toFixed(2)}`
+        `${document.currencySymbol || '$'}${safeNum(item.unitPrice)}`,
+        `${document.currencySymbol || '$'}${safeNum(item.total)}`
       ])
     }
   ];
@@ -213,8 +219,8 @@ export default function DocumentDetailModal({ document, onClose }) {
                     <div className="text-[10px] text-slate-400 uppercase font-bold">Extracted Line Items:</div>
                     {document.lineItems?.map((item, idx) => (
                       <div key={idx} className="flex justify-between text-[11px] text-slate-700">
-                        <span className="truncate max-w-[190px]">{item.description}</span>
-                        <span className="font-semibold">{document.currencySymbol || '$'}{Number(item.total).toFixed(2)}</span>
+                        <span className="truncate max-w-[190px]">{item.description || 'Line item'}</span>
+                        <span className="font-semibold">{document.currencySymbol || '$'}{safeNum(item.total)}</span>
                       </div>
                     ))}
                   </div>
@@ -222,7 +228,7 @@ export default function DocumentDetailModal({ document, onClose }) {
                   {/* Total */}
                   <div className="border-t-2 border-slate-900 pt-2 flex justify-between items-center text-sm">
                     <span className="font-bold text-slate-900 font-mono">AMOUNT / TOTAL:</span>
-                    <span className="font-black text-slate-900 font-mono">{document.currencySymbol || '$'}{document.totalAmount.toFixed(2)}</span>
+                    <span className="font-black text-slate-900 font-mono">{document.currencySymbol || '$'}{safeNum(document.totalAmount)}</span>
                   </div>
                 </div>
               )}
@@ -438,7 +444,7 @@ export default function DocumentDetailModal({ document, onClose }) {
                     <div className="space-y-2">
                       <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
                         <div className="text-[10px] text-amber-400 font-bold">QUERY: What is the total invoice amount?</div>
-                        <div className="text-white font-bold">{document.currencySymbol || '$'}{document.totalAmount.toFixed(2)}</div>
+                        <div className="text-white font-bold">{document.currencySymbol || '$'}{safeNum(document.totalAmount)}</div>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
                         <div className="text-[10px] text-sky-400 font-bold">QUERY: What is the vendor name and record ID?</div>

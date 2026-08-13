@@ -10,6 +10,7 @@ import AwsBackendCodeGuide from './components/AwsBackendCodeGuide';
 import ArchitectureView from './components/ArchitectureView';
 import PaidServicesModal from './components/PaidServicesModal';
 import StandbyHeroView from './components/StandbyHeroView';
+import ErrorBoundary from './components/ErrorBoundary';
 import { INITIAL_DOCUMENTS } from './services/awsPipeline';
 import { 
   LayoutDashboard, Upload, Database, Code, CheckCircle2, ShieldCheck, Terminal, ExternalLink, Sparkles, FileText, ArrowRight, Cloud, Layers, DollarSign, ChevronDown, ChevronRight
@@ -337,10 +338,12 @@ export default function App() {
 
       {/* Document Detail Modal */}
       {selectedDoc && (
-        <DocumentDetailModal
-          document={selectedDoc}
-          onClose={() => setSelectedDoc(null)}
-        />
+        <ErrorBoundary onReset={() => setSelectedDoc(null)}>
+          <DocumentDetailModal
+            document={selectedDoc}
+            onClose={() => setSelectedDoc(null)}
+          />
+        </ErrorBoundary>
       )}
 
       {/* AWS Settings Modal */}

@@ -278,7 +278,7 @@ export default function Dashboard({ documents, onSelectDocument }) {
                     {doc.vendorName}
                   </span>
                   <span className="text-amber-400 font-bold flex-shrink-0 font-mono">
-                    {doc.currencySymbol || '$'}{doc.totalAmount.toFixed(2)}
+                    {doc.currencySymbol || '$'}{typeof doc.totalAmount === 'number' ? doc.totalAmount.toFixed(2) : Number(doc.totalAmount || 0).toFixed(2)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-slate-400">
