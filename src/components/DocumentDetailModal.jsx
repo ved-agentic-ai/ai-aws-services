@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   X, FileText, Download, Building2, Calendar, DollarSign, CreditCard, Tag, Sparkles, 
-  ShieldAlert, CheckCircle2, Code, Layers, FileCheck, Eye, Cpu, Scan, CheckSquare, 
+  ShieldAlert, ShieldCheck, CheckCircle2, Code, Layers, FileCheck, Eye, Cpu, Scan, CheckSquare, 
   Table, Grid, FileCode2, HelpCircle, PenTool, SlidersHorizontal, Check, ArrowRight
 } from 'lucide-react';
 
